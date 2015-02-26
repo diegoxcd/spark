@@ -302,6 +302,30 @@ case object StringType extends NativeType with PrimitiveType {
   override def defaultSize: Int = 4096
 }
 
+object AnyTypeObj extends AnyType {
+
+}
+
+/**
+ * :: DeveloperApi ::
+ *
+ * The data type representing `Any` values. Please use the singleton [[DataTypes.AnyType]].
+ *
+ * @group dataType
+ */
+@DeveloperApi
+case class AnyType() extends DataType {
+  private[sql] type JvmType = Any
+  @transient private[sql] lazy val tag = ScalaReflectionLock.synchronized { typeTag[JvmType] }
+
+  /**
+   * The default size of a value of the AnyType is 4096 bytes.
+   */
+  override def defaultSize: Int = 4096
+}
+
+
+
 
 /**
  * :: DeveloperApi ::

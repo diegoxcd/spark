@@ -1034,4 +1034,20 @@ class SQLQuerySuite extends QueryTest with BeforeAndAfterAll {
     rdd.registerTempTable("distinctData")
     checkAnswer(sql("SELECT COUNT(DISTINCT key,value) FROM distinctData"), Row(2))
   }
+
+  test("schemaless") {
+    checkAnswer(
+      sql("SELECT * FROM myrows"),
+      (1 to 100).map(x => Row(math.sqrt(x.toDouble))).toSeq
+    )
+  }
+
+  test("schemaless-2") {
+    checkAnswer(
+      sql("SELECT * FROM testData77"),
+      (1 to 100).map(x => Row(math.sqrt(x.toDouble))).toSeq
+    )
+  }
+
+
 }

@@ -143,7 +143,7 @@ abstract class CodeGenerator[InType <: AnyRef, OutType <: AnyRef] extends Loggin
       def castOrNull(f: TermName => Tree, dataType: DataType): Seq[Tree] = {
         val eval = expressionEvaluator(e)
         eval.code ++
-        q"""
+              q"""
           val $nullTerm = ${eval.nullTerm}
           val $primitiveTerm =
             if($nullTerm)

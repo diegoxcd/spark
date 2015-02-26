@@ -21,6 +21,7 @@ import java.sql.Timestamp
 
 import org.apache.spark.sql.catalyst.plans.logical
 import org.apache.spark.sql.test._
+import org.apache.spark.sql.types._
 
 /* Implicits */
 import org.apache.spark.sql.test.TestSQLContext._
@@ -202,4 +203,29 @@ object TestData {
         :: ComplexData(Map(2 -> "2"), TestData(2, "2"), Seq(2), false)
         :: Nil).toSchemaRDD
   complexData.registerTempTable("complexData")
+
+  val rdd = TestSQLContext.sparkContext.parallelize(Row(1,Seq("a",2,3),3.4) :: Row(3,Seq(1,2,3),1,2) :: Nil)
+  //val schema = StructType(
+  //      StructField ("a",IntegerType, true) ::
+  //      StructField ("b",ArrayType(IntegerType), true) ::
+  //      StructField ("c",DoubleType, true) :: Nil
+  //)
+  val rowRDD = TestSQLContext.sparkContext.parallelize(
+    Row(Map("a" -> 1,"b" -> Seq("a",2,3),"c" -> 3.4)) :: Row(Map("a" -> 3,"b" -> Seq(1,2,3),"c" -> 1, "d" -> 2)) :: Nil)
+
+  //val y = rdd.toSchemaRDD
+  val x = TestSQLContext.applySchema(rowRDD,AnyTypeObj)
+
+  x.registerTempTable("myrows")
+  val testD =
+    TestSQLContext.sparkContext.parallelize(
+      TestData2(1, 1) ::
+        TestData2(1, 2) ::
+        TestData2(2, 1) ::
+        TestData(2, "2") ::
+        TestData(3, "1") ::
+        TestData(3, "2") :: Nil, 2)
+  testD.registerTempTable("testData77")
+
+  testD.printSchema()
 }

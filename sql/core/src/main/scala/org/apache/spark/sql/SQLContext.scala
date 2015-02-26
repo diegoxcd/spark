@@ -119,6 +119,8 @@ class SQLContext(@transient val sparkContext: SparkContext)
     case _ =>
   }
 
+
+
   /**
    * Creates a SchemaRDD from an RDD of case classes.
    *
@@ -127,8 +129,15 @@ class SQLContext(@transient val sparkContext: SparkContext)
   implicit def createSchemaRDD[A <: Product: TypeTag](rdd: RDD[A]): SchemaRDD = {
     SparkPlan.currentContext.set(self)
     val attributeSeq = ScalaReflection.attributesFor[A]
-    val schema = StructType.fromAttributes(attributeSeq)
-    val rowRDD = RDDConversions.productToRowRdd(rdd, schema)
+    val rowRDD =
+      attributeSeq(0) match {
+      case AttributeReference("*", _: AnyType,_,_) =>
+        RDDConversions.productToRowRdd(rdd, AnyTypeObj)
+      case _      =>
+        val schema = StructType.fromAttributes(attributeSeq)
+        RDDConversions.productToRowRdd(rdd, schema)
+    }
+
     new SchemaRDD(this, LogicalRDD(attributeSeq, rowRDD)(self))
   }
 
@@ -170,10 +179,27 @@ class SQLContext(@transient val sparkContext: SparkContext)
    * @group userf
    */
   @DeveloperApi
-  def applySchema(rowRDD: RDD[Row], schema: StructType): SchemaRDD = {
+  def applySchema(rowRDD: RDD[Row], schema: DataType): SchemaRDD = {
     // TODO: use MutableProjection when rowRDD is another SchemaRDD and the applied
     // schema differs from the existing schema on any field data type.
-    val logicalPlan = LogicalRDD(schema.toAttributes, rowRDD)(self)
+    var rRDD = rowRDD
+    val logicalPlan = schema match {
+      case s:StructType =>
+        LogicalRDD(s.toAttributes, rowRDD)(self)
+      case _:AnyType    =>
+        val attributes =
+          if (rowRDD.first().size ==1 ) {
+            rowRDD.first().get(0) match {
+              case r : Map[String,_] =>
+                rRDD = RDDConversions.mapRowToRDD(rowRDD,AnyTypeObj)
+                Seq(AttributeReference("*", AnyTypeObj)())
+              case r : TupleValue =>  Seq(AttributeReference("*", AnyTypeObj)())
+              case _ => Nil
+          }
+        } else Nil
+        LogicalRDD(attributes, rRDD)(self)
+    }
+
     new SchemaRDD(this, logicalPlan)
   }
 
@@ -299,6 +325,7 @@ class SQLContext(@transient val sparkContext: SparkContext)
    * @group userf
    */
   def registerRDDAsTable(rdd: SchemaRDD, tableName: String): Unit = {
+
     catalog.registerTable(Seq(tableName), rdd.queryExecution.logical)
   }
 
@@ -470,7 +497,12 @@ class SQLContext(@transient val sparkContext: SparkContext)
     // only used for execution.
     lazy val executedPlan: SparkPlan = prepareForExecution(sparkPlan)
 
-    /** Internal version of the RDD. Avoids copies and has no schema */
+    /** Internal version of the RDD. Avoids copies and  ShuffledHashJoin [CAST(value#1, DoubleType)], [CAST(b#7, DoubleType)], BuildRight
+  Project [value#1]
+   PhysicalRDD [key#0,value#1], MapPartitionsRDD[1] at mapPartitions at ExistingRDD.scala:35
+  Project [b#7]
+   PhysicalRDD [a#6,b#7], MapPartitionsRDD[10] at mapPartitions at ExistingRDD.scala:35
+has no schema */
     lazy val toRdd: RDD[Row] = executedPlan.execute()
 
     protected def stringOrError[A](f: => A): String =

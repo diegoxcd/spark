@@ -28,6 +28,10 @@ public class DataTypes {
    * Gets the StringType object.
    */
   public static final DataType StringType = StringType$.MODULE$;
+  /**
+   * Gets the AnyType object.
+   */
+  public static final DataType AnyTypeObj = AnyTypeObj$.MODULE$;
 
   /**
    * Gets the BinaryType object.

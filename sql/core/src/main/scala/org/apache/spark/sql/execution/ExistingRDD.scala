@@ -19,12 +19,12 @@ package org.apache.spark.sql.execution
 
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{Row, SQLContext}
+import org.apache.spark.sql.{ Row, SQLContext}
 import org.apache.spark.sql.catalyst.ScalaReflection
 import org.apache.spark.sql.catalyst.analysis.MultiInstanceRelation
 import org.apache.spark.sql.catalyst.expressions.{Attribute, GenericMutableRow}
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Statistics}
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.{AnyTypeObj, AnyType, StructType}
 
 /**
  * :: DeveloperApi ::
@@ -46,6 +46,36 @@ object RDDConversions {
               ScalaReflection.convertToCatalyst(r.productElement(i), schemaFields(i).dataType)
             i += 1
           }
+
+          mutableRow
+        }
+      }
+    }
+  }
+  def productToRowRdd[A <: Product](data: RDD[A], schema: AnyType): RDD[Row] = {
+    data.mapPartitions { iterator =>
+      if (iterator.isEmpty) {
+        Iterator.empty
+      } else {
+        val bufferedIterator = iterator.buffered
+        val mutableRow = new GenericMutableRow(1)
+        bufferedIterator.map { r =>
+          mutableRow(0) = ScalaReflection.convertToCatalyst(r,AnyTypeObj)
+
+          mutableRow
+        }
+      }
+    }
+  }
+  def mapRowToRDD(data: RDD[Row], schema: AnyType): RDD[Row] = {
+    data.mapPartitions { iterator =>
+      if (iterator.isEmpty) {
+        Iterator.empty
+      } else {
+        val bufferedIterator = iterator.buffered
+        val mutableRow = new GenericMutableRow(1)
+        bufferedIterator.map { r =>
+          mutableRow(0) = ScalaReflection.convertToCatalyst(r(0),AnyTypeObj)
 
           mutableRow
         }

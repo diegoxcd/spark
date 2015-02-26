@@ -20,7 +20,7 @@ package org.apache.spark.sql.catalyst
 import java.sql.{Date, Timestamp}
 
 import org.apache.spark.util.Utils
-import org.apache.spark.sql.catalyst.expressions.{GenericRow, Attribute, AttributeReference, Row}
+import org.apache.spark.sql.catalyst.expressions.{GenericRow, Attribute, AttributeReference, Row, GenericTupleValue}
 import org.apache.spark.sql.catalyst.plans.logical.LocalRelation
 import org.apache.spark.sql.types._
 
@@ -67,6 +67,14 @@ trait ScalaReflection {
         }.toArray)
     case (d: BigDecimal, _) => Decimal(d)
     case (d: java.math.BigDecimal, _) => Decimal(d)
+    case (p: Product, _: AnyType) =>
+      new GenericTupleValue(
+        p.getClass.getDeclaredFields.map(field => field.getName),
+        p.productIterator.map { elem =>
+          convertToCatalyst(elem, AnyTypeObj)
+        }.toSeq)
+    case (m: Map[String,_], _: AnyType) =>
+      new GenericTupleValue(m.toMap)
     case (other, _) => other
   }
 
@@ -94,6 +102,8 @@ trait ScalaReflection {
   def attributesFor[T: TypeTag]: Seq[Attribute] = schemaFor[T] match {
     case Schema(s: StructType, _) =>
       s.fields.map(f => AttributeReference(f.name, f.dataType, f.nullable, f.metadata)())
+    case Schema(s: AnyType, _) =>
+      Seq(AttributeReference("*", AnyTypeObj)())
   }
 
   /** Returns a catalyst DataType and its nullability for the given Scala Type using reflection. */
@@ -117,26 +127,32 @@ trait ScalaReflection {
         Schema(schemaFor(optType).dataType, nullable = true)
       case t if t <:< typeOf[Product] =>
         val formalTypeArgs = t.typeSymbol.asClass.typeParams
-        val TypeRef(_, _, actualTypeArgs) = t
-        val constructorSymbol = t.member(nme.CONSTRUCTOR)
-        val params = if (constructorSymbol.isMethod) {
-          constructorSymbol.asMethod.paramss
-        } else {
-          // Find the primary constructor, and use its parameter ordering.
-          val primaryConstructorSymbol: Option[Symbol] = constructorSymbol.asTerm.alternatives.find(
-            s => s.isMethod && s.asMethod.isPrimaryConstructor)
-          if (primaryConstructorSymbol.isEmpty) {
-            sys.error("Internal SQL error: Product object did not have a primary constructor.")
-          } else {
-            primaryConstructorSymbol.get.asMethod.paramss
-          }
+        t match {
+          case TypeRef(_, _, actualTypeArgs) =>
+            val constructorSymbol = t.member(nme.CONSTRUCTOR)
+            val params = if (constructorSymbol.isMethod) {
+              constructorSymbol.asMethod.paramss
+            } else {
+              // Find the primary constructor, and use its parameter ordering.
+              val primaryConstructorSymbol: Option[Symbol] = constructorSymbol.asTerm.alternatives.find(
+                s => s.isMethod && s.asMethod.isPrimaryConstructor)
+              if (primaryConstructorSymbol.isEmpty) {
+                sys.error("Internal SQL error: Product object did not have a primary constructor.")
+              } else {
+                primaryConstructorSymbol.get.asMethod.paramss
+              }
+            }
+            Schema(StructType(
+              params.head.map { p =>
+                val sf = p.typeSignature.substituteTypes(formalTypeArgs, actualTypeArgs)
+                val Schema(dataType, nullable) =
+                  schemaFor(sf)
+                StructField(p.name.toString, dataType, nullable)
+              }), nullable = true)
+          case _ => Schema(AnyTypeObj,nullable = true)
         }
-        Schema(StructType(
-          params.head.map { p =>
-            val Schema(dataType, nullable) =
-              schemaFor(p.typeSignature.substituteTypes(formalTypeArgs, actualTypeArgs))
-            StructField(p.name.toString, dataType, nullable)
-          }), nullable = true)
+
+
       // Need to decide if we actually need a special type here.
       case t if t <:< typeOf[Array[Byte]] => Schema(BinaryType, nullable = true)
       case t if t <:< typeOf[Array[_]] =>
