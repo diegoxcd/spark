@@ -2,7 +2,7 @@ package org.apache.spark.sql.catalyst.expressions
 
 import org.apache.spark.sql.TupleValue
 
-import scala.collection.mutable
+
 
 
 
@@ -10,8 +10,8 @@ import scala.collection.mutable
  * Created by diegoxcd on 2/24/15.
  */
 /**
- * A row implementation that uses an array of objects as the underlying storage.  Note that, while
- * the array is not copied, and thus could technically be mutated after creation, this is not
+ * A tuple implementation that uses an map of string -> objects as the underlying storage.  Note that, while
+ * the map is not copied, and thus could technically be mutated after creation, this is not
  * allowed.
  */
 class GenericTupleValue(protected[sql] val attributes : Map[String, Any]) extends TupleValue {
@@ -31,9 +31,9 @@ class GenericTupleValue(protected[sql] val attributes : Map[String, Any]) extend
 
   override def length = attributes.size
 
-  override def apply(i: String) = attributes(i)
+  override def apply(s: String) = attributes.getOrElse(s,null)
 
-  override def isNullAt(i: String) = attributes(i) == null
+  override def isNullAt(s: String) = apply(s) == null
 
 
 

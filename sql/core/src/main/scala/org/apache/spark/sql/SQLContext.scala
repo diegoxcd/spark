@@ -325,8 +325,17 @@ class SQLContext(@transient val sparkContext: SparkContext)
    * @group userf
    */
   def registerRDDAsTable(rdd: SchemaRDD, tableName: String): Unit = {
+    val lp = rdd.logicalPlan
+    val new_rdd =
+      if (lp.output.size == 1 ) {
+        (lp.output(0), lp) match {
+          case (r :AttributeReference, l : LogicalRDD)  if r.name == "*" =>
+            new SchemaRDD(rdd.sqlContext, LogicalRDD(Seq(AttributeReference(tableName, AnyTypeObj)()), l.rdd)(this))
+          case _ => rdd
+      }
+    } else rdd
 
-    catalog.registerTable(Seq(tableName), rdd.queryExecution.logical)
+    catalog.registerTable(Seq(tableName), new_rdd.queryExecution.logical)
   }
 
   /**

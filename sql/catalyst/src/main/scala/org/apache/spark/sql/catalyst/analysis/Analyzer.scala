@@ -236,6 +236,7 @@ class Analyzer(catalog: Catalog,
     }
   }
 
+
   /**
    * Replaces [[UnresolvedAttribute]]s with concrete
    * [[catalyst.expressions.AttributeReference AttributeReferences]] from a logical plan node's
@@ -246,7 +247,7 @@ class Analyzer(catalog: Catalog,
       case p: LogicalPlan if !p.childrenResolved => p
 
       // If the projection list contains Stars, expand it.
-      case p @ Project(projectList, child) if containsStar(projectList) =>
+      case p@Project(projectList, child) if containsStar(projectList) =>
         Project(
           projectList.flatMap {
             case s: Star => s.expand(child.output, resolver)
@@ -270,8 +271,22 @@ class Analyzer(catalog: Catalog,
           }
         )
 
-      case q: LogicalPlan =>
-        logTrace(s"Attempting to resolve ${q.simpleString}")
+      case l: LogicalPlan =>
+        logTrace(s"Attempting to resolve ${l.simpleString}")
+        val q:LogicalPlan = l.expressions.foldLeft(l) {
+          case (plan,u@UnresolvedAttribute(name)) =>
+            plan.resolveNavigation(name, resolver) match {
+              case Some((att, grandchild)) =>
+                val nav = Navigate(att, grandchild)
+                plan match {
+                  case p: Project => p.copy(child = nav)
+                  case p: Filter =>  p.copy(child = nav)
+                }
+              case None => plan
+            }
+          case (plan,_) => plan
+
+        }
         q transformExpressions {
           case u @ UnresolvedAttribute(name)
               if resolver(name, VirtualColumn.groupingIdName) &&

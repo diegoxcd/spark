@@ -50,6 +50,21 @@ case class Project(projectList: Seq[NamedExpression], child: SparkPlan) extends 
  * :: DeveloperApi ::
  */
 @DeveloperApi
+case class Navigate(element: NamedExpression, child: SparkPlan) extends UnaryNode {
+  override def output = child.output ++ Seq(element.toAttribute)
+
+  @transient lazy val buildNavigate = newNavigation(element, child.output)
+
+  def execute() = child.execute().mapPartitions { iter =>
+    val reusableNavigate = buildNavigate()
+    iter.map(reusableNavigate)
+  }
+}
+
+/**
+ * :: DeveloperApi ::
+ */
+@DeveloperApi
 case class Filter(condition: Expression, child: SparkPlan) extends UnaryNode {
   override def output = child.output
 

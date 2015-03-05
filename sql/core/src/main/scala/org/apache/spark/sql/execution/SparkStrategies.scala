@@ -276,6 +276,8 @@ private[sql] abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
         execution.Sort(sortExprs, global, planLater(child)):: Nil
       case logical.Project(projectList, child) =>
         execution.Project(projectList, planLater(child)) :: Nil
+      case logical.Navigate(element, child) =>
+        execution.Navigate(element, planLater(child)) :: Nil
       case logical.Filter(condition, child) =>
         execution.Filter(condition, planLater(child)) :: Nil
       case logical.Expand(projections, output, child) =>

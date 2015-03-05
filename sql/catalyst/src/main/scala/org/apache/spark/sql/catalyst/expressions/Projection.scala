@@ -73,6 +73,40 @@ case class InterpretedMutableProjection(expressions: Seq[Expression]) extends Mu
 }
 
 /**
+ * A [[MutableProjection]] that is calculated by calling `eval` on each of the specified
+ * expressions.
+ * @param expression a expression that determine the new values of each column of the
+ *                    output row.
+ */
+case class InterpretedNavigation(expression: Expression) extends MutableProjection {
+  def this(expression: Expression, inputSchema: Seq[Attribute]) =
+    this(BindReferences.bindReference(expression, inputSchema))
+
+  //private[this] val exprArray = expressions.toArray
+  private[this] var mutableRow: MutableRow = null
+  def currentValue: Row = mutableRow
+
+  override def target(row: MutableRow): MutableProjection = {
+    mutableRow = row
+    this
+  }
+
+  override def apply(input: Row): Row = {
+    if (mutableRow == null) {
+      mutableRow = new GenericMutableRow(input.size+1)
+    }
+    var i = 0
+    while (i < input.length) {
+      mutableRow(i) = input(i)
+      i += 1
+    }
+    mutableRow(i) = expression.eval(input)
+
+    mutableRow
+  }
+}
+
+/**
  * A mutable wrapper that makes two rows appear as a single concatenated row.  Designed to
  * be instantiated once per thread and reused.
  */

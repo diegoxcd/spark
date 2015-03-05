@@ -23,7 +23,7 @@ import org.apache.spark.sql.catalyst.errors.TreeNodeException
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.plans.QueryPlan
 import org.apache.spark.sql.catalyst.trees.TreeNode
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.{AnyTypeObj, AnyType, StructType}
 import org.apache.spark.sql.catalyst.trees
 
 /**
@@ -83,11 +83,11 @@ abstract class LogicalPlan extends QueryPlan[LogicalPlan] with Logging {
    */
   def sameResult(plan: LogicalPlan): Boolean = {
     plan.getClass == this.getClass &&
-    plan.children.size == children.size && {
+      plan.children.size == children.size && {
       logDebug(s"[${cleanArgs.mkString(", ")}] == [${plan.cleanArgs.mkString(", ")}]")
       cleanArgs == plan.cleanArgs
     } &&
-    (plan.children, children).zipped.forall(_ sameResult _)
+      (plan.children, children).zipped.forall(_ sameResult _)
   }
 
   /** Args that have cleaned such that differences in expression id should not affect equality */
@@ -108,6 +108,73 @@ abstract class LogicalPlan extends QueryPlan[LogicalPlan] with Logging {
       case other => other
     }.toSeq
   }
+
+  /** Performs attribute resolution given a name and a sequence of possible attributes, when the data contained
+    * of AnyType */
+  def resolveNavigation(name: String,
+                        resolver: Resolver): Option[(NamedExpression, LogicalPlan)] = {
+
+    val parts = name.split("\\.")
+    val options = children.flatMap { child =>
+      child.output.flatMap { option =>
+        // If the first part of the desired name matches a qualifier for this possible match, drop it.
+        if (option.qualifiers.find(resolver(_, parts.head)).nonEmpty && parts.size > 1) {
+          val remainingParts = parts.drop(1)
+
+          // in case it is a AnyType, we check if the
+          if (option.dataType.isInstanceOf[AnyType] && option.qualifiers.find(resolver(_, option.name)).nonEmpty) {
+            val path =  remainingParts.mkString(".")
+            val resolved = getResolvedPaths(path, parts.head, resolver, child)
+            resolved match {
+              case Seq(a) => Nil
+              case Seq()  =>
+                val att = pathExpression(option, path)(qualifiers = option.qualifiers)
+                (att,child) :: Nil
+            }
+          } else {
+            Nil
+          }
+        } else {
+          Nil
+        }
+      }
+    }
+
+
+    options.distinct match {
+      // One match, no nested fields, use it.
+      case Seq((attributes, child)) => Some((attributes, child))
+
+      // No matches.
+      case Seq() => None
+
+      // More than one match.
+      case ambiguousReferences =>
+        throw new TreeNodeException(
+          this, s"Ambiguous navigation to $name: ${ambiguousReferences.mkString(",")}")
+    }
+  }
+
+  private def getResolvedPaths(path: String,
+                                 head: String,
+                                 resolver: Resolver,
+                                 child: LogicalPlan): Seq[String] = {
+
+    child.output.flatMap { option =>
+      // If the first part of the desired name matches a qualifier for this possible match, drop it.
+      if (option.qualifiers.find(resolver(_, head)).nonEmpty) {
+        if (option.dataType.isInstanceOf[AnyType] && resolver(option.name, path)) {
+          //already solved
+          path :: Nil
+        } else {
+          Nil
+        }
+      } else {
+        Nil
+      }
+    }
+  }
+
 
   /**
    * Optionally resolves the given string to a [[NamedExpression]] using the input from all child
@@ -146,9 +213,12 @@ abstract class LogicalPlan extends QueryPlan[LogicalPlan] with Logging {
           parts
         }
 
-      if (resolver(option.name, remainingParts.head)) {
-        // Preserve the case of the user's attribute reference.
+      if (!option.dataType.isInstanceOf[AnyType] && resolver(option.name, remainingParts.head)) {
+        // Preserve the case of the user's attribute reference
         (option.withName(remainingParts.head), remainingParts.tail.toList) :: Nil
+      } else if (option.dataType.isInstanceOf[AnyType] && resolver(option.name,remainingParts.mkString("."))) {
+        //in case it is an attribute with type Any, and matches all the path
+        (option.withName(option.name), Nil) :: Nil
       } else {
         Nil
       }

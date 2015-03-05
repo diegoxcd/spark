@@ -59,6 +59,11 @@ object TestData {
       TestData2(3, 2) :: Nil, 2).toSchemaRDD
   testData2.registerTempTable("testData2")
 
+  val negativeData2 = TestSQLContext.sparkContext.parallelize(
+    (1 to 100).map(i => TestData2(i, (-i)))).toSchemaRDD
+  negativeData2.registerTempTable("negativeData2")
+
+
   case class DecimalData(a: BigDecimal, b: BigDecimal)
 
   val decimalData =
@@ -211,7 +216,7 @@ object TestData {
   //      StructField ("c",DoubleType, true) :: Nil
   //)
   val rowRDD = TestSQLContext.sparkContext.parallelize(
-    Row(Map("a" -> 1,"b" -> Seq("a",2,3),"c" -> 3.4)) :: Row(Map("a" -> 3,"b" -> Seq(1,2,3),"c" -> 1, "d" -> 2)) :: Nil)
+    Row(Map("a" -> 1,"b" -> Map("bb" -> 3),"c" -> 3.4)) :: Row(Map("a" -> 3,"b" -> Seq(1,2),"c" -> 1, "d" -> 2)) :: Nil)
 
   //val y = rdd.toSchemaRDD
   val x = TestSQLContext.applySchema(rowRDD,AnyTypeObj)
@@ -227,5 +232,4 @@ object TestData {
         TestData(3, "2") :: Nil, 2)
   testD.registerTempTable("testData77")
 
-  testD.printSchema()
 }

@@ -60,6 +60,11 @@ case class Generate(
     if (join) child.output ++ generatorOutput else generatorOutput
 }
 
+case class Navigate(element: NamedExpression, child: LogicalPlan) extends UnaryNode {
+  def output = child.output ++ Seq(element.toAttribute)
+}
+
+
 case class Filter(condition: Expression, child: LogicalPlan) extends UnaryNode {
   override def output = child.output
 }
@@ -246,7 +251,7 @@ case class Limit(limitExpr: Expression, child: LogicalPlan) extends UnaryNode {
 }
 
 case class Subquery(alias: String, child: LogicalPlan) extends UnaryNode {
-  override def output = child.output.map(_.withQualifiers(alias :: Nil))
+  override def output = child.output.map(o => o.withQualifiers(o.qualifiers :+ alias))
 }
 
 case class Sample(fraction: Double, withReplacement: Boolean, seed: Long, child: LogicalPlan)

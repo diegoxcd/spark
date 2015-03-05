@@ -20,6 +20,7 @@ package org.apache.spark.sql
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.util._
 import org.apache.spark.sql.columnar.InMemoryRelation
+import org.apache.spark.sql.catalyst.expressions.GenericTupleValue
 
 class QueryTest extends PlanTest {
 
@@ -56,6 +57,7 @@ class QueryTest extends PlanTest {
       val converted: Seq[Row] = answer.map { s =>
         Row.fromSeq(s.toSeq.map {
           case d: java.math.BigDecimal => BigDecimal(d)
+          case t: Map[String,_] => new GenericTupleValue(t)
           case o => o
         })
       }
@@ -72,8 +74,9 @@ class QueryTest extends PlanTest {
             |${org.apache.spark.sql.catalyst.util.stackTraceToString(e)}
           """.stripMargin)
     }
-
-    if (prepareAnswer(expectedAnswer) != prepareAnswer(sparkAnswer)) {
+    val exp = prepareAnswer(expectedAnswer)
+    val spk = prepareAnswer(sparkAnswer)
+    if (exp != spk) {
       fail(s"""
         |Results do not match for query:
         |${rdd.logicalPlan}

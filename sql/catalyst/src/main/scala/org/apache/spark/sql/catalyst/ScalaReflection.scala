@@ -67,14 +67,17 @@ trait ScalaReflection {
         }.toArray)
     case (d: BigDecimal, _) => Decimal(d)
     case (d: java.math.BigDecimal, _) => Decimal(d)
+    case (s: Seq[_], t: AnyType) => s.map(convertToCatalyst(_, t))
     case (p: Product, _: AnyType) =>
       new GenericTupleValue(
         p.getClass.getDeclaredFields.map(field => field.getName),
         p.productIterator.map { elem =>
           convertToCatalyst(elem, AnyTypeObj)
         }.toSeq)
-    case (m: Map[String,_], _: AnyType) =>
-      new GenericTupleValue(m.toMap)
+    case (m: Map[String,_], t: AnyType) => val mp = m.map { case (k, v) =>
+      k -> convertToCatalyst(v, t)
+      }
+      new GenericTupleValue(mp.toMap)
     case (other, _) => other
   }
 
