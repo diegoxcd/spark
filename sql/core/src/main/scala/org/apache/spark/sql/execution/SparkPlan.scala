@@ -104,14 +104,14 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
   }
 
   protected def newNavigation(
-                               expression: Expression,
+                               expressions: Seq[Expression],
                                inputSchema: Seq[Attribute]): () => MutableProjection = {
     log.debug(
-      s"Creating Navigation: $expression, inputSchema: $inputSchema, codegen:$codegenEnabled")
+      s"Creating Navigation: $expressions, inputSchema: $inputSchema, codegen:$codegenEnabled")
     if(codegenEnabled) {
       null
     } else {
-      () => new InterpretedNavigation(expression, inputSchema)
+      () => new InterpretedNavigation(expressions, inputSchema)
     }
   }
 

@@ -57,6 +57,7 @@ class Analyzer(catalog: Catalog,
       NewRelationInstances),
     Batch("Resolution", fixedPoint,
       ResolveReferences ::
+      ResolveNavigate ::
       ResolveRelations ::
       ResolveGroupingAnalytics ::
       ResolveSortReferences ::
@@ -232,7 +233,8 @@ class Analyzer(catalog: Catalog,
         i.copy(
           table = EliminateAnalysisOperators(catalog.lookupRelation(tableIdentifier, alias)))
       case UnresolvedRelation(tableIdentifier, alias) =>
-        catalog.lookupRelation(tableIdentifier, alias)
+        val table = catalog.lookupRelation(tableIdentifier, alias)
+         Navigate(Seq(),table)
     }
   }
 
@@ -271,22 +273,9 @@ class Analyzer(catalog: Catalog,
           }
         )
 
-      case l: LogicalPlan =>
-        logTrace(s"Attempting to resolve ${l.simpleString}")
-        val q:LogicalPlan = l.expressions.foldLeft(l) {
-          case (plan,u@UnresolvedAttribute(name)) =>
-            plan.resolveNavigation(name, resolver) match {
-              case Some((att, grandchild)) =>
-                val nav = Navigate(att, grandchild)
-                plan match {
-                  case p: Project => p.copy(child = nav)
-                  case p: Filter =>  p.copy(child = nav)
-                }
-              case None => plan
-            }
-          case (plan,_) => plan
+      case q: LogicalPlan =>
+        logTrace(s"Attempting to resolve ${q.simpleString}")
 
-        }
         q transformExpressions {
           case u @ UnresolvedAttribute(name)
               if resolver(name, VirtualColumn.groupingIdName) &&
@@ -315,6 +304,38 @@ class Analyzer(catalog: Catalog,
      */
     protected def containsStar(exprs: Seq[Expression]): Boolean =
       exprs.collect { case _: Star => true}.nonEmpty
+  }
+
+  /**
+   * Creates the Navigate expressions given the [[UnresolvedAttribute]]s
+
+   */
+  object ResolveNavigate extends Rule[LogicalPlan] {
+    def apply(plan: LogicalPlan): LogicalPlan = plan transformUp {
+      case p: LogicalPlan if !p.childrenResolved => p
+
+      case l: LogicalPlan =>
+        logTrace(s"Attempting to resolve ${l.simpleString}")
+        val q: LogicalPlan = introduceNavigate(l,l.expressions)
+
+        q
+    }
+    protected def introduceNavigate(plan: LogicalPlan, expressions: Seq[Expression]): LogicalPlan =
+      expressions.foldLeft(plan) {
+        case (plan,u@UnresolvedAttribute(name)) =>
+          plan.resolveNavigation(name, resolver) match {
+            case Some(att) =>
+              plan transform {
+                case p@Navigate(ele,_) if p.output(0).qualifiers == att.qualifiers =>
+                  p.copy(elements = ele ++ Seq(att))
+              }
+            case None => plan
+          }
+        case (plan,e: Expression) =>
+          introduceNavigate(plan, e.children)
+        case (plan,_) =>
+          plan
+      }
   }
 
   /**
@@ -440,5 +461,6 @@ class Analyzer(catalog: Catalog,
 object EliminateAnalysisOperators extends Rule[LogicalPlan] {
   def apply(plan: LogicalPlan): LogicalPlan = plan transform {
     case Subquery(_, child) => child
+    case Navigate(Seq(),child) => child
   }
 }

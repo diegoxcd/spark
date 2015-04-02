@@ -227,6 +227,10 @@ abstract class DataType {
   def json: String = compact(render(jsonValue))
 
   def prettyJson: String = pretty(render(jsonValue))
+
+  def superTypeOf(that: DataType) = that.isInstanceOf[this.type]
+
+  def isEquivalent(that: DataType) = this.superTypeOf(that) || that.superTypeOf(this)
 }
 
 
@@ -317,6 +321,14 @@ object AnyTypeObj extends AnyType {
 case class AnyType() extends DataType {
   private[sql] type JvmType = Any
   @transient private[sql] lazy val tag = ScalaReflectionLock.synchronized { typeTag[JvmType] }
+
+  override def equals(that: Any) = {
+    that match {
+      case t :AnyType => true
+      case _ => false
+    }
+  }
+  override def superTypeOf(that: DataType) = true
 
   /**
    * The default size of a value of the AnyType is 4096 bytes.

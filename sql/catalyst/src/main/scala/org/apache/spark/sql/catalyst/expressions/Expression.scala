@@ -17,8 +17,9 @@
 
 package org.apache.spark.sql.catalyst.expressions
 
+import org.apache.spark.sql.catalyst.analysis.HiveTypeCoercion
 import org.apache.spark.sql.catalyst.errors.TreeNodeException
-import org.apache.spark.sql.catalyst.trees
+import org.apache.spark.sql.catalyst.{ScalaReflection, trees}
 import org.apache.spark.sql.catalyst.trees.TreeNode
 import org.apache.spark.sql.types._
 
@@ -97,7 +98,7 @@ abstract class Expression extends TreeNode[Expression] {
       e2: Expression,
       f: ((Numeric[Any], Any, Any) => Any)): Any  = {
 
-    if (e1.dataType != e2.dataType) {
+    if (!e1.dataType.isEquivalent(e2.dataType) ) {
       throw new TreeNodeException(this,  s"Types do not match ${e1.dataType} != ${e2.dataType}")
     }
 
@@ -109,11 +110,21 @@ abstract class Expression extends TreeNode[Expression] {
       if (evalE2 == null) {
         null
       } else {
-        e1.dataType match {
-          case n: NumericType =>
+        (e1.dataType,e2.dataType) match {
+          case (n: NumericType,t2:NumericType) =>
             f.asInstanceOf[(Numeric[n.JvmType], n.JvmType, n.JvmType) => n.JvmType](
               n.numeric, evalE1.asInstanceOf[n.JvmType], evalE2.asInstanceOf[n.JvmType])
-          case other => sys.error(s"Type $other does not support numeric operations")
+          case (t1 , t2) =>
+            val (nEvalE1, nt1) = SQLPlusPlusTypes.coerceAnyNumeric(evalE1,t1)
+            val (nEvalE2, nt2) = SQLPlusPlusTypes.coerceAnyNumeric(evalE2,t2)
+            val t =HiveTypeCoercion.findTightestCommonType(nt1,nt2).getOrElse(AnyTypeObj)
+            (t,nt1,nt2) match {
+              case (n:NumericType,nt1:NumericType,nt2:NumericType) =>
+                f.asInstanceOf[(Numeric[n.JvmType], n.JvmType, n.JvmType) => n.JvmType] (
+                  n.numeric, SQLPlusPlusTypes.convertToType(nEvalE1,nt1,n).asInstanceOf[n.JvmType],
+                  SQLPlusPlusTypes.convertToType(nEvalE2,nt2,n).asInstanceOf[n.JvmType] )
+              case _ => null
+            }
         }
       }
     }
@@ -182,7 +193,7 @@ abstract class Expression extends TreeNode[Expression] {
       e1: Expression,
       e2: Expression,
       f: ((Integral[Any], Any, Any) => Any)): Any  = {
-    if (e1.dataType != e2.dataType) {
+    if (!e1.dataType.isEquivalent(e2.dataType) ) {
       throw new TreeNodeException(this,  s"Types do not match ${e1.dataType} != ${e2.dataType}")
     }
 
@@ -194,13 +205,27 @@ abstract class Expression extends TreeNode[Expression] {
       if (evalE2 == null) {
         null
       } else {
-        e1.dataType match {
-          case i: IntegralType =>
+        (e1.dataType,e2.dataType) match {
+          case (i: IntegralType,i2:IntegralType) =>
             f.asInstanceOf[(Integral[i.JvmType], i.JvmType, i.JvmType) => i.JvmType](
               i.integral, evalE1.asInstanceOf[i.JvmType], evalE2.asInstanceOf[i.JvmType])
-          case i: FractionalType =>
+          case (i: FractionalType,i2: IntegralType) =>
             f.asInstanceOf[(Integral[i.JvmType], i.JvmType, i.JvmType) => i.JvmType](
               i.asIntegral, evalE1.asInstanceOf[i.JvmType], evalE2.asInstanceOf[i.JvmType])
+          case (i: IntegralType,i2: FractionalType) =>
+            f.asInstanceOf[(Integral[i2.JvmType], i2.JvmType, i2.JvmType) => i2.JvmType](
+              i2.asIntegral, evalE1.asInstanceOf[i2.JvmType], evalE2.asInstanceOf[i2.JvmType])
+          case (t1 , t2) =>
+            val (nEvalE1, nt1) = SQLPlusPlusTypes.coerceAnyNumeric(evalE1,t1)
+            val (nEvalE2, nt2) = SQLPlusPlusTypes.coerceAnyNumeric(evalE2,t2)
+            val t =HiveTypeCoercion.findTightestCommonType(nt1,nt2).getOrElse(AnyTypeObj)
+            (t,nt1,nt2) match {
+              case (n:NumericType,nt1:NumericType,nt2:NumericType) =>
+                f.asInstanceOf[(Numeric[n.JvmType], n.JvmType, n.JvmType) => n.JvmType] (
+                  n.numeric, SQLPlusPlusTypes.convertToType(nEvalE1,nt1,n).asInstanceOf[n.JvmType],
+                  SQLPlusPlusTypes.convertToType(nEvalE2,nt2,n).asInstanceOf[n.JvmType] )
+              case _ => null
+            }
           case other => sys.error(s"Type $other does not support numeric operations")
         }
       }
@@ -244,7 +269,7 @@ abstract class Expression extends TreeNode[Expression] {
       e1: Expression,
       e2: Expression,
       f: ((Ordering[Any], Any, Any) => Any)): Any  = {
-    if (e1.dataType != e2.dataType) {
+    if (!e1.dataType.isEquivalent(e2.dataType) ) {
       throw new TreeNodeException(this,  s"Types do not match ${e1.dataType} != ${e2.dataType}")
     }
 
@@ -256,10 +281,29 @@ abstract class Expression extends TreeNode[Expression] {
       if (evalE2 == null) {
         null
       } else {
-        e1.dataType match {
-          case i: NativeType =>
+        (e1.dataType, e2.dataType )match {
+          case (i: NativeType,i2: NativeType )=>
             f.asInstanceOf[(Ordering[i.JvmType], i.JvmType, i.JvmType) => Boolean](
               i.ordering, evalE1.asInstanceOf[i.JvmType], evalE2.asInstanceOf[i.JvmType])
+          case (t1 , t2) =>
+            val (nEvalE1, nt1) = SQLPlusPlusTypes.coerceAny(evalE1,t1)
+            val (nEvalE2, nt2) = SQLPlusPlusTypes.coerceAny(evalE2,t2)
+            val t = HiveTypeCoercion.findTightestCommonType(nt1,nt2).getOrElse(AnyTypeObj)
+            (t,nt1,nt2) match {
+              case (n:NumericType,nt1:NumericType,nt2:NumericType) =>
+                f.asInstanceOf[(Numeric[n.JvmType], n.JvmType, n.JvmType) => n.JvmType] (
+                  n.numeric, SQLPlusPlusTypes.convertToType(nEvalE1,nt1,n).asInstanceOf[n.JvmType],
+                  SQLPlusPlusTypes.convertToType(nEvalE2,nt2,n).asInstanceOf[n.JvmType] )
+              case (n:NativeType,nt1:NativeType,nt2:NativeType) if nt1 == nt2 =>
+                f.asInstanceOf[(Ordering[n.JvmType], n.JvmType, n.JvmType) => n.JvmType] (
+                  n.ordering, nEvalE1.asInstanceOf[n.JvmType], nEvalE2.asInstanceOf[n.JvmType] )
+              case (n:AnyType, nt1,nt2) =>
+                f.asInstanceOf[(Ordering[IntegerType.JvmType], IntegerType.JvmType,
+                  IntegerType.JvmType) => IntegerType.JvmType] (IntegerType.numeric,
+                  SQLPlusPlusTypes.typeOrder(nt1), SQLPlusPlusTypes.typeOrder(nt2))
+
+              case _ => null
+            }
           case other => sys.error(s"Type $other does not support ordered operations")
         }
       }

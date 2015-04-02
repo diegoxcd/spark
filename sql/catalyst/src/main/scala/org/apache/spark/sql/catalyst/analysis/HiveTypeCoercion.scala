@@ -71,6 +71,7 @@ trait HiveTypeCoercion {
     ConvertNaNs ::
     WidenTypes ::
     PromoteStrings ::
+    PromoteAny ::
     DecimalPrecision ::
     BooleanComparisons ::
     BooleanCasts ::
@@ -256,9 +257,14 @@ trait HiveTypeCoercion {
         && p.right.dataType == TimestampType =>
         p.makeCopy(Array(Cast(p.left, StringType), Cast(p.right, StringType)))
 
-      case p: BinaryPredicate if p.left.dataType == StringType && p.right.dataType != StringType =>
+
+      case p: BinaryPredicate if p.left.dataType == StringType
+                                && p.right.dataType != StringType
+                                && p.right.dataType != AnyTypeObj =>
         p.makeCopy(Array(Cast(p.left, DoubleType), p.right))
-      case p: BinaryPredicate if p.left.dataType != StringType && p.right.dataType == StringType =>
+      case p: BinaryPredicate if p.left.dataType != StringType
+                                && p.right.dataType == StringType
+                                && p.left.dataType != AnyTypeObj =>
         p.makeCopy(Array(p.left, Cast(p.right, DoubleType)))
 
       case i @ In(a, b) if a.dataType == DateType && b.forall(_.dataType == StringType) =>
@@ -276,6 +282,23 @@ trait HiveTypeCoercion {
         Average(Cast(e, DoubleType))
       case Sqrt(e) if e.dataType == StringType =>
         Sqrt(Cast(e, DoubleType))
+    }
+  }
+
+  /**
+   * Promotes the type AnyType to doubles when they appear in arithmetic expressions.
+   */
+  object PromoteAny extends Rule[LogicalPlan] {
+    def apply(plan: LogicalPlan): LogicalPlan = plan transformAllExpressions {
+      // Skip nodes who's children have not been resolved yet.
+      case e if !e.childrenResolved => e
+
+      case a: BinaryArithmetic if a.left.dataType == AnyTypeObj =>
+        a.makeCopy(Array(Cast(a.left, DoubleType), a.right))
+      case a: BinaryArithmetic if a.right.dataType == AnyTypeObj =>
+        a.makeCopy(Array(a.left, Cast(a.right, DoubleType)))
+
+
     }
   }
 
@@ -546,13 +569,12 @@ trait HiveTypeCoercion {
         if (valueTypes.distinct.size > 1) {
           val commonType = valueTypes.reduce { (v1, v2) =>
             findTightestCommonType(v1, v2)
-              .getOrElse(sys.error(
-                s"Types in CASE WHEN must be the same or coercible to a common type: $v1 != $v2"))
+              .getOrElse(AnyTypeObj)
           }
           val transformedBranches = branches.sliding(2, 2).map {
-            case Seq(cond, value) if value.dataType != commonType =>
+            case Seq(cond, value) if value.dataType != commonType  && commonType != AnyTypeObj=>
               Seq(cond, Cast(value, commonType))
-            case Seq(elseVal) if elseVal.dataType != commonType =>
+            case Seq(elseVal) if elseVal.dataType != commonType && commonType != AnyTypeObj=>
               Seq(Cast(elseVal, commonType))
             case s => s
           }.reduce(_ ++ _)

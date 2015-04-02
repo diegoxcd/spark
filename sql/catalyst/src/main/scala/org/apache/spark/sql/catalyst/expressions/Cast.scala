@@ -22,6 +22,7 @@ import java.text.{DateFormat, SimpleDateFormat}
 
 import org.apache.spark.Logging
 import org.apache.spark.sql.catalyst.errors.TreeNodeException
+import org.apache.spark.sql.catalyst.ScalaReflection
 import org.apache.spark.sql.types._
 
 /** Cast the child expression to the target data type. */
@@ -65,11 +66,13 @@ case class Cast(child: Expression, dataType: DataType) extends UnaryExpression w
       case (DateType, BooleanType)          => true
       case (TimestampType, BooleanType)     => true
       case (_: NumericType, BooleanType)    => true
+      case (_: AnyType, BooleanType)        => true
 
       case (StringType, TimestampType)      => true
       case (BooleanType, TimestampType)     => true
       case (DateType, TimestampType)        => true
       case (_: NumericType, TimestampType)  => true
+      case (_: AnyType, TimestampType)      => true
 
       case (_, DateType)                    => true
 
@@ -78,6 +81,8 @@ case class Cast(child: Expression, dataType: DataType) extends UnaryExpression w
       case (DateType, _: NumericType)       => true
       case (TimestampType, _: NumericType)  => true
       case (_: NumericType, _: NumericType) => true
+      case (_: AnyType, _:NumericType)        => true
+
 
       case (ArrayType(from, fn), ArrayType(to, tn)) =>
         resolve(from, to) &&
@@ -112,6 +117,8 @@ case class Cast(child: Expression, dataType: DataType) extends UnaryExpression w
 
   // UDFToString
   private[this] def castToString(from: DataType): Any => Any = from match {
+    case StringType => identity[Any]
+    case AnyTypeObj => castAnyType(castToString)
     case BinaryType => buildCast[Array[Byte]](_, new String(_, "UTF-8"))
     case DateType => buildCast[Date](_, dateToString)
     case TimestampType => buildCast[Timestamp](_, timestampToString)
@@ -125,8 +132,11 @@ case class Cast(child: Expression, dataType: DataType) extends UnaryExpression w
 
   // UDFToBoolean
   private[this] def castToBoolean(from: DataType): Any => Any = from match {
+    case BooleanType => identity[Any]
     case StringType =>
       buildCast[String](_, _.length() != 0)
+    case AnyTypeObj =>
+      castAnyType(castToBoolean)
     case TimestampType =>
       buildCast[Timestamp](_, t => t.getTime() != 0 || t.getNanos() != 0)
     case DateType =>
@@ -146,10 +156,12 @@ case class Cast(child: Expression, dataType: DataType) extends UnaryExpression w
       buildCast[Double](_, _ != 0)
     case FloatType =>
       buildCast[Float](_, _ != 0)
+
   }
 
   // TimestampConverter
   private[this] def castToTimestamp(from: DataType): Any => Any = from match {
+    case TimestampType => identity[Any]
     case StringType =>
       buildCast[String](_, s => {
         // Throw away extra if more than 9 decimal places
@@ -160,6 +172,8 @@ case class Cast(child: Expression, dataType: DataType) extends UnaryExpression w
         }
         try Timestamp.valueOf(n) catch { case _: java.lang.IllegalArgumentException => null }
       })
+    case AnyTypeObj =>
+      castAnyType(castToTimestamp)
     case BooleanType =>
       buildCast[Boolean](_, b => new Timestamp((if (b) 1 else 0)))
     case LongType =>
@@ -231,9 +245,12 @@ case class Cast(child: Expression, dataType: DataType) extends UnaryExpression w
 
   // DateConverter
   private[this] def castToDate(from: DataType): Any => Any = from match {
+    case DateType => identity[Any]
     case StringType =>
       buildCast[String](_, s =>
         try Date.valueOf(s) catch { case _: java.lang.IllegalArgumentException => null })
+    case AnyTypeObj =>
+      castAnyType(castToDate)
     case TimestampType =>
       // throw valid precision more than seconds, according to Hive.
       // Timestamp.nanos is in 0 to 999,999,999, no more than a second.
@@ -261,6 +278,8 @@ case class Cast(child: Expression, dataType: DataType) extends UnaryExpression w
       buildCast[String](_, s => try s.toLong catch {
         case _: NumberFormatException => null
       })
+    case AnyTypeObj =>
+      castAnyType(castToLong)
     case BooleanType =>
       buildCast[Boolean](_, b => if (b) 1L else 0L)
     case DateType =>
@@ -277,6 +296,8 @@ case class Cast(child: Expression, dataType: DataType) extends UnaryExpression w
       buildCast[String](_, s => try s.toInt catch {
         case _: NumberFormatException => null
       })
+    case AnyTypeObj =>
+      castAnyType(castToInt)
     case BooleanType =>
       buildCast[Boolean](_, b => if (b) 1 else 0)
     case DateType =>
@@ -293,6 +314,8 @@ case class Cast(child: Expression, dataType: DataType) extends UnaryExpression w
       buildCast[String](_, s => try s.toShort catch {
         case _: NumberFormatException => null
       })
+    case AnyTypeObj =>
+      castAnyType(castToShort)
     case BooleanType =>
       buildCast[Boolean](_, b => if (b) 1.toShort else 0.toShort)
     case DateType =>
@@ -309,6 +332,8 @@ case class Cast(child: Expression, dataType: DataType) extends UnaryExpression w
       buildCast[String](_, s => try s.toByte catch {
         case _: NumberFormatException => null
       })
+    case AnyTypeObj =>
+      castAnyType(castToByte)
     case BooleanType =>
       buildCast[Boolean](_, b => if (b) 1.toByte else 0.toByte)
     case DateType =>
@@ -339,6 +364,8 @@ case class Cast(child: Expression, dataType: DataType) extends UnaryExpression w
       buildCast[String](_, s => try changePrecision(Decimal(s.toDouble), target) catch {
         case _: NumberFormatException => null
       })
+    case AnyTypeObj =>
+      castAnyType(castToDecimal(_,target))
     case BooleanType =>
       buildCast[Boolean](_, b => changePrecision(if (b) Decimal(1) else Decimal(0), target))
     case DateType =>
@@ -358,12 +385,21 @@ case class Cast(child: Expression, dataType: DataType) extends UnaryExpression w
       }
   }
 
+  private[this] def castAnyType(parentFunction: DataType => Any => Any):  Any => Any ={
+    b => {
+      val t = ScalaReflection.typeOfObject(b)
+      val f = parentFunction(t)
+      f(b)
+    }
+  }
   // DoubleConverter
   private[this] def castToDouble(from: DataType): Any => Any = from match {
     case StringType =>
       buildCast[String](_, s => try s.toDouble catch {
         case _: NumberFormatException => null
       })
+    case AnyTypeObj =>
+      castAnyType(castToDouble)
     case BooleanType =>
       buildCast[Boolean](_, b => if (b) 1d else 0d)
     case DateType =>
@@ -380,6 +416,8 @@ case class Cast(child: Expression, dataType: DataType) extends UnaryExpression w
       buildCast[String](_, s => try s.toFloat catch {
         case _: NumberFormatException => null
       })
+    case AnyTypeObj =>
+      castAnyType(castToFloat)
     case BooleanType =>
       buildCast[Boolean](_, b => if (b) 1f else 0f)
     case DateType =>

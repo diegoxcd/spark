@@ -137,10 +137,13 @@ object TestData {
     TestSQLContext.sparkContext.parallelize(List.fill(2)(StringData("test")))
   repeatedData.registerTempTable("repeatedData")
 
+  case class twoData(s: String, i:Int)
   val nullableRepeatedData =
     TestSQLContext.sparkContext.parallelize(
-      List.fill(2)(StringData(null)) ++
-      List.fill(2)(StringData("test")))
+      List.fill(2)(twoData(null,2)) ++
+      List.fill(2)(twoData("test",2))++
+        List.fill(4)(twoData(null,3)) ++
+        List.fill(4)(twoData("test",3)),2)
   nullableRepeatedData.registerTempTable("nullableRepeatedData")
 
   case class NullInts(a: Integer)
@@ -218,18 +221,67 @@ object TestData {
   val rowRDD = TestSQLContext.sparkContext.parallelize(
     Row(Map("a" -> 1,"b" -> Map("bb" -> 3),"c" -> 3.4)) :: Row(Map("a" -> 3,"b" -> Seq(1,2),"c" -> 1, "d" -> 2)) :: Nil)
 
-  //val y = rdd.toSchemaRDD
-  val x = TestSQLContext.applySchema(rowRDD,AnyTypeObj)
+  val mix = TestSQLContext.applySchema(rowRDD,AnyTypeObj)
 
-  x.registerTempTable("myrows")
+  mix.registerTempTable("myrows")
+
+  val rowRDD1 = TestSQLContext.sparkContext.parallelize(
+    Row(1,1) :: Row(1,3.5) :: Nil)
+
+  val mix1 = TestSQLContext.applySchema(rowRDD1,StructType(Seq(StructField("a",IntegerType),StructField("b",DoubleType))))
+
+  mix1.registerTempTable("rows")
+
+  val rowRDD2 = TestSQLContext.sparkContext.parallelize(
+    //Row(2,3) :: Row(3,4) :: Nil)
+    Row(Map("a" -> 2,"b" -> 3,"c" -> true)) :: Row(Map("a" -> 3.0,"b" -> 7.0, "c"-> false)) :: Nil)
+
+  val mix2 = TestSQLContext.applySchema(rowRDD2,AnyTypeObj)//StructType(StructField("a",IntegerType)::StructField("b",IntegerType)::Nil))
+
+  mix2.registerTempTable("IntsAsFloats")
+
   val testD =
     TestSQLContext.sparkContext.parallelize(
       TestData2(1, 1) ::
         TestData2(1, 2) ::
-        TestData2(2, 1) ::
-        TestData(2, "2") ::
+        TestData2(2, 5) ::
+        TestData(2, "3.2") ::
         TestData(3, "1") ::
         TestData(3, "2") :: Nil, 2)
   testD.registerTempTable("testData77")
 
+  case class TestData8(a : Int, b: Float)
+  val testD8 =
+    TestSQLContext.sparkContext.parallelize(
+      TestData2(1, 1) ::
+        TestData2(2, 5) ::
+        TestData2(1, 2) ::
+        TestData2(2, 5) ::
+        TestData8(2, 3.0.toFloat) ::
+        TestData8(3, 3.41.toFloat) ::
+        TestData8(3, 3.2.toFloat) :: Nil, 2)
+  testD8.registerTempTable("testDataIntFloat")
+
+  case class TestDataString(a: Int, b: String)
+
+  val testH =
+    TestSQLContext.sparkContext.parallelize(
+      TestData2(1, 1) ::
+        TestData2(2, 5) ::
+        TestData2(1, 2) ::
+        TestData2(2, 5) ::
+        TestData8(2, 3.0.toFloat) ::
+        TestData8(3, 3.41.toFloat) ::
+        TestData8(3, 3.2.toFloat) ::
+        TestDataString(1,"a" ) ::
+        TestDataString(4,"x") ::
+        TestDataString(1,"a") ::
+        TestDataString(2, "b") ::
+        Nil, 2)
+  testH.registerTempTable("testHeterogeneousData")
+
+  val rowSchemaless = TestSQLContext.sparkContext.parallelize(
+    (1 to 100).map(i => Row(Map ("key" -> i,"value" -> i.toString ))))
+  val testDataSchemaless = TestSQLContext.applySchema(rowSchemaless,AnyTypeObj)
+  testDataSchemaless.registerTempTable("testDataSchemaless")
 }

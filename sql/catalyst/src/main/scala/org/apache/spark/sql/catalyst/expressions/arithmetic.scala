@@ -17,7 +17,7 @@
 
 package org.apache.spark.sql.catalyst.expressions
 
-import org.apache.spark.sql.catalyst.analysis.UnresolvedException
+import org.apache.spark.sql.catalyst.analysis.{HiveTypeCoercion, UnresolvedException}
 import org.apache.spark.sql.types._
 
 case class UnaryMinus(child: Expression) extends UnaryExpression {
@@ -66,7 +66,7 @@ abstract class BinaryArithmetic extends BinaryExpression {
 
   override lazy val resolved =
     left.resolved && right.resolved &&
-    left.dataType == right.dataType &&
+     left.dataType.isEquivalent(right.dataType) &&
     !DecimalType.isFixed(left.dataType)
 
   def dataType = {
@@ -74,7 +74,7 @@ abstract class BinaryArithmetic extends BinaryExpression {
       throw new UnresolvedException(this,
         s"datatype. Can not resolve due to differing types ${left.dataType}, ${right.dataType}")
     }
-    left.dataType
+    HiveTypeCoercion.findTightestCommonType(left.dataType,right.dataType).getOrElse(AnyTypeObj)
   }
 
   override def eval(input: Row): Any = {

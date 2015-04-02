@@ -23,7 +23,7 @@ import org.apache.spark.sql.catalyst.errors.TreeNodeException
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.plans.QueryPlan
 import org.apache.spark.sql.catalyst.trees.TreeNode
-import org.apache.spark.sql.types.{AnyTypeObj, AnyType, StructType}
+import org.apache.spark.sql.types.{ AnyType, StructType}
 import org.apache.spark.sql.catalyst.trees
 
 /**
@@ -112,7 +112,7 @@ abstract class LogicalPlan extends QueryPlan[LogicalPlan] with Logging {
   /** Performs attribute resolution given a name and a sequence of possible attributes, when the data contained
     * of AnyType */
   def resolveNavigation(name: String,
-                        resolver: Resolver): Option[(NamedExpression, LogicalPlan)] = {
+                        resolver: Resolver): Option[NamedExpression] = {
 
     val parts = name.split("\\.")
     val options = children.flatMap { child =>
@@ -121,7 +121,7 @@ abstract class LogicalPlan extends QueryPlan[LogicalPlan] with Logging {
         if (option.qualifiers.find(resolver(_, parts.head)).nonEmpty && parts.size > 1) {
           val remainingParts = parts.drop(1)
 
-          // in case it is a AnyType, we check if the
+          // in case it is a AnyType, we check if the relation exists
           if (option.dataType.isInstanceOf[AnyType] && option.qualifiers.find(resolver(_, option.name)).nonEmpty) {
             val path =  remainingParts.mkString(".")
             val resolved = getResolvedPaths(path, parts.head, resolver, child)
@@ -129,7 +129,7 @@ abstract class LogicalPlan extends QueryPlan[LogicalPlan] with Logging {
               case Seq(a) => Nil
               case Seq()  =>
                 val att = pathExpression(option, path)(qualifiers = option.qualifiers)
-                (att,child) :: Nil
+                att :: Nil
             }
           } else {
             Nil
@@ -143,7 +143,7 @@ abstract class LogicalPlan extends QueryPlan[LogicalPlan] with Logging {
 
     options.distinct match {
       // One match, no nested fields, use it.
-      case Seq((attributes, child)) => Some((attributes, child))
+      case Seq(attributes) => Some(attributes)
 
       // No matches.
       case Seq() => None

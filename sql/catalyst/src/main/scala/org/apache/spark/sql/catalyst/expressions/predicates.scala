@@ -17,9 +17,9 @@
 
 package org.apache.spark.sql.catalyst.expressions
 
-import org.apache.spark.sql.catalyst.analysis.UnresolvedException
+import org.apache.spark.sql.catalyst.analysis.{HiveTypeCoercion, UnresolvedException}
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
-import org.apache.spark.sql.types.BooleanType
+import org.apache.spark.sql.types.{AnyTypeObj, BooleanType}
 
 object InterpretedPredicate {
   def apply(expression: Expression, inputSchema: Seq[Attribute]): (Row => Boolean) =
@@ -222,14 +222,14 @@ case class If(predicate: Expression, trueValue: Expression, falseValue: Expressi
   def children = predicate :: trueValue :: falseValue :: Nil
   override def nullable = trueValue.nullable || falseValue.nullable
 
-  override lazy val resolved = childrenResolved && trueValue.dataType == falseValue.dataType
+  override lazy val resolved = childrenResolved //&& trueValue.dataType == falseValue.dataType
   def dataType = {
     if (!resolved) {
       throw new UnresolvedException(
         this,
         s"Can not resolve due to differing types ${trueValue.dataType}, ${falseValue.dataType}")
     }
-    trueValue.dataType
+    HiveTypeCoercion.findTightestCommonType(trueValue.dataType, falseValue.dataType).getOrElse(AnyTypeObj)
   }
 
   type EvaluatedType = Any
@@ -268,7 +268,13 @@ case class CaseWhen(branches: Seq[Expression]) extends Expression {
     if (!resolved) {
       throw new UnresolvedException(this, "cannot resolve due to differing types in some branches")
     }
-    branches(1).dataType
+    val valueTypes = branches.sliding(2, 2).map {
+      case Seq(_, value) => value.dataType
+      case Seq(elseVal) => elseVal.dataType
+    }.toSeq
+    val commonType = valueTypes.reduce { (v1, v2) =>
+      HiveTypeCoercion.findTightestCommonType(v1, v2).getOrElse(AnyTypeObj)}
+    commonType
   }
 
   @transient private[this] lazy val branchesArr = branches.toArray
@@ -290,8 +296,9 @@ case class CaseWhen(branches: Seq[Expression]) extends Expression {
     } else {
       val allCondBooleans = predicates.forall(_.dataType == BooleanType)
       // both then and else val should be considered.
-      val dataTypesEqual = (values ++ elseValue).map(_.dataType).distinct.size <= 1
-      allCondBooleans && dataTypesEqual
+      // deleted because the branch can be heterogeneous
+      //val dataTypesEqual = (values ++ elseValue).map(_.dataType).distinct.size <= 1
+      allCondBooleans //&& dataTypesEqual
     }
   }
 

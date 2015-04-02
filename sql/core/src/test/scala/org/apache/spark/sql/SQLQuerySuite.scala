@@ -1035,34 +1035,5 @@ class SQLQuerySuite extends QueryTest with BeforeAndAfterAll {
     checkAnswer(sql("SELECT COUNT(DISTINCT key,value) FROM distinctData"), Row(2))
   }
 
-  test("schemaless") {
-    checkAnswer(
-      sql("SELECT * FROM testData77"),
-      Seq(Row(Map("a" -> 1,"b"->1)),
-        Row(Map("a" -> 1,"b"->2)),
-        Row(Map("a" -> 2,"b"->1)),
-        Row(Map("key" -> 2,"value"->"2")),
-        Row(Map("key" -> 3,"value"->"1")),
-        Row(Map("key" -> 3,"value"->"2"))
-      )
-    )
-  }
-
-  test("schemaless-2") {
-    checkAnswer(
-      sql("SELECT  t.a,t.b,  t.key, t.value FROM testData77 as t"),
-      Seq(Row(1,1,null,null),Row(1,2,null,null),Row(2,1,null,null),
-        Row(null,null,2,"2"),Row(null,null,3,"1"),Row(null,null,3,"2"))
-    )
-  }
-
-  test("schemaless-3") {
-    checkAnswer(
-      sql("SELECT  t.b, t.b.bb FROM myrows as t "),
-      Seq(Row(List(1,2),null),
-        Row(Map("bb" -> 3),3))
-    )
-  }
-
 
 }

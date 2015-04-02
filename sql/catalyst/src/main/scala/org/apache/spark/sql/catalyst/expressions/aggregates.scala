@@ -335,6 +335,8 @@ case class Sum(child: Expression) extends PartialAggregate with trees.UnaryNode[
       DecimalType(precision + 10, scale)  // Add 10 digits left of decimal point, like Hive
     case DecimalType.Unlimited =>
       DecimalType.Unlimited
+    case AnyTypeObj =>
+      DecimalType.Unlimited
     case _ =>
       child.dataType
   }
@@ -416,10 +418,17 @@ case class CombineSetsAndSumFunction(
     if (casted.size == 0) {
       null
     } else {
-      Cast(Literal(
-        casted.iterator.map(f => f.apply(0)).reduceLeft(
-          base.dataType.asInstanceOf[NumericType].numeric.asInstanceOf[Numeric[Any]].plus)),
-        base.dataType).eval(null)
+      base.dataType match {
+        case AnyTypeObj => Cast(Literal(
+          casted.iterator.map(f => f.apply(0)).reduceLeft(
+            (a,b) => Add(Literal(a,AnyTypeObj), Literal(b,AnyTypeObj)).eval(null))),
+          DecimalType.Unlimited).eval(null)
+        case _ => Cast(Literal(
+          casted.iterator.map(f => f.apply(0)).reduceLeft(
+            base.dataType.asInstanceOf[NumericType].numeric.asInstanceOf[Numeric[Any]].plus)),
+          base.dataType).eval(null)
+      }
+
     }
   }
 }
@@ -461,6 +470,8 @@ case class AverageFunction(expr: Expression, base: AggregateExpression)
   private val calcType =
     expr.dataType match {
       case DecimalType.Fixed(_, _) =>
+        DecimalType.Unlimited
+      case AnyTypeObj =>
         DecimalType.Unlimited
       case _ =>
         expr.dataType
@@ -557,6 +568,8 @@ case class SumFunction(expr: Expression, base: AggregateExpression) extends Aggr
     expr.dataType match {
       case DecimalType.Fixed(_, _) =>
         DecimalType.Unlimited
+      case AnyTypeObj =>
+        DecimalType.Unlimited
       case _ =>
         expr.dataType
     }
@@ -598,10 +611,16 @@ case class SumDistinctFunction(expr: Expression, base: AggregateExpression)
     if (seen.size == 0) {
       null
     } else {
-      Cast(Literal(
-        seen.reduceLeft(
-          dataType.asInstanceOf[NumericType].numeric.asInstanceOf[Numeric[Any]].plus)),
-        dataType).eval(null)
+      base.dataType match {
+        case AnyTypeObj => Cast(Literal(seen.reduceLeft(
+            (a,b) => Add(Literal(a,AnyTypeObj), Literal(b,AnyTypeObj)).eval(null))),
+          DecimalType.Unlimited).eval(null)
+        case _ => Cast(Literal(
+          seen.reduceLeft(
+            dataType.asInstanceOf[NumericType].numeric.asInstanceOf[Numeric[Any]].plus)),
+          dataType).eval(null)
+      }
+
     }
   }
 }
