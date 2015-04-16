@@ -15,11 +15,12 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql.schemaless
+package org.apache.spark.sql
 
 import java.util.TimeZone
 
-import org.apache.spark.sql.{QueryTest, Row, SQLConf}
+
+import org.apache.spark.sql.schemaless.TestCSVData
 import org.scalatest.BeforeAndAfterAll
 
 /* Implicits */
@@ -29,6 +30,7 @@ class BenchSemiStructuredSuite extends QueryTest with BeforeAndAfterAll {
   val originalColumnBatchSize = conf.columnBatchSize
   val originalInMemoryPartitionPruning = conf.inMemoryPartitionPruning
   // Make sure the tables are loaded.
+  import TestCSVData._
   TestCSVData
 
   var origZone: TimeZone = _
