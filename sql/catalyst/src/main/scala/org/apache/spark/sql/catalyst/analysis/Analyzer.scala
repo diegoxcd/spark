@@ -316,9 +316,8 @@ class Analyzer(catalog: Catalog,
 
       case l: LogicalPlan =>
         logTrace(s"Attempting to resolve ${l.simpleString}")
-        val q: LogicalPlan = introduceNavigate(l,l.expressions)
 
-        q
+        introduceNavigate(l,l.expressions)
     }
     protected def introduceNavigate(plan: LogicalPlan, expressions: Seq[Expression]): LogicalPlan =
       expressions.foldLeft(plan) {

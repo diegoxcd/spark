@@ -779,6 +779,22 @@ object StructType {
   }
 }
 
+case object OpenStructType {
+  protected[sql] def fromAttributes(attributes: Seq[Attribute]): StructType =
+    StructType(attributes.map(a => StructField(a.name, a.dataType, a.nullable, a.metadata)))
+
+  def apply(fields: Seq[StructField]): StructType = {
+    val nFields = fields :+ StructField("*",AnyTypeObj)
+    StructType(nFields.toArray)
+  }
+
+  def apply(fields: java.util.List[StructField]): StructType = {
+    fields.add(StructField("*",AnyTypeObj))
+    StructType(fields.toArray.asInstanceOf[Array[StructField]])
+  }
+
+
+}
 
 /**
  * :: DeveloperApi ::
@@ -907,6 +923,8 @@ case class StructType(fields: Array[StructField]) extends DataType with Seq[Stru
    * The default size of a value of the StructType is the total default sizes of all field types.
    */
   override def defaultSize: Int = fields.map(_.dataType.defaultSize).sum
+
+  def isOpen :Boolean = fieldNamesSet.contains("*")
 }
 
 

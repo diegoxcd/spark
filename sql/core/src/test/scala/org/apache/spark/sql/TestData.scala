@@ -284,4 +284,27 @@ object TestData {
     (1 to 100).map(i => Row(Map ("key" -> i,"value" -> i.toString ))))
   val testDataSchemaless = TestSQLContext.applySchema(rowSchemaless,AnyTypeObj)
   testDataSchemaless.registerTempTable("testDataSchemaless")
+
+
+
+
+
+  val openRDD = TestSQLContext.sparkContext.parallelize((
+    Row(1, 2.3, List(1), List(3,4), Map("a" -> 3.0,"b" -> 7.0, "c"-> "option")) :: Nil) ++
+    (1 to 100).map(i => Row(1,i.toDouble,i.toString,List(i),null)) ++
+    Seq(Row(2, 3.0, "a"    , List(2,3), Map("x" -> 2,"y" -> 3,"z" -> true))) ++
+    (1 to 100).map(i => Row(2,i.toDouble,"xx",List(2,i),Map("a"->(i+1), "y" -> (i*2).toDouble))),
+    2)
+
+  val sType = OpenStructType(
+    StructField("number",IntegerType) ::
+    StructField("float",DoubleType) ::
+    StructField("any", AnyTypeObj) ::
+    StructField("array", ArrayType(IntegerType))::Nil)
+
+  val openSchemaRDD = TestSQLContext.applySchema(openRDD,sType)
+
+  openSchemaRDD.registerTempTable("openTable")
+
+
 }

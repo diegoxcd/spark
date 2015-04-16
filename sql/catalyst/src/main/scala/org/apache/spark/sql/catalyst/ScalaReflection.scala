@@ -74,7 +74,7 @@ trait ScalaReflection {
         p.productIterator.map { elem =>
           convertToCatalyst(elem, AnyTypeObj)
         }.toSeq)
-    case (m: Map[String,_], t: AnyType) => val mp = m.map { case (k, v) =>
+    case (m: Map[String,_], t: AnyType) => val mp:Map[String,Any] = m.map { case (k, v) =>
       k -> convertToCatalyst(v, t)
       }
       new GenericTupleValue(mp.toMap)

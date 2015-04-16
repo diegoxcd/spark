@@ -17,7 +17,9 @@
 
 package org.apache.spark.sql.json
 
+import org.apache.spark.sql.Row
 import org.apache.spark.sql.test.TestSQLContext
+import org.apache.spark.sql.types._
 
 object TestJsonData {
 

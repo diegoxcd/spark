@@ -82,6 +82,27 @@ object RDDConversions {
       }
     }
   }
+  def openRowToRDD(data: RDD[Row], schema: StructType): RDD[Row] = {
+    data.mapPartitions { iterator =>
+      if (iterator.isEmpty) {
+        Iterator.empty
+      } else {
+        val bufferedIterator = iterator.buffered
+        val mutableRow = new GenericMutableRow(bufferedIterator.head.size)
+        val schemaFields = schema.fields.toArray
+        bufferedIterator.map { r =>
+          var i = 0
+          while (i < mutableRow.length) {
+            mutableRow(i) = //r(i)
+              ScalaReflection.convertToCatalyst(r(i), schemaFields(i).dataType)
+            i += 1
+          }
+
+          mutableRow
+        }
+      }
+    }
+  }
 }
 
 case class LogicalRDD(output: Seq[Attribute], rdd: RDD[Row])(sqlContext: SQLContext)

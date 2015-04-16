@@ -184,6 +184,9 @@ class SQLContext(@transient val sparkContext: SparkContext)
     // schema differs from the existing schema on any field data type.
     var rRDD = rowRDD
     val logicalPlan = schema match {
+      case o: StructType if o.isOpen =>
+        rRDD = RDDConversions.openRowToRDD(rowRDD, o)
+        LogicalRDD(o.toAttributes, rRDD)(self)
       case s:StructType =>
         LogicalRDD(s.toAttributes, rowRDD)(self)
       case _:AnyType    =>
@@ -327,13 +330,14 @@ class SQLContext(@transient val sparkContext: SparkContext)
   def registerRDDAsTable(rdd: SchemaRDD, tableName: String): Unit = {
     val lp = rdd.logicalPlan
     val new_rdd =
-      if (lp.output.size == 1 ) {
-        (lp.output(0), lp) match {
-          case (r :AttributeReference, l : LogicalRDD)  if r.name == "*" =>
-            new SchemaRDD(rdd.sqlContext, LogicalRDD(Seq(AttributeReference(tableName, AnyTypeObj)()), l.rdd)(this))
+      if (lp.output.size >= 1 ) {
+        (lp.output(lp.output.size-1), lp) match {
+          case (r@AttributeReference("*",AnyTypeObj,_,_), l : LogicalRDD)  =>
+            val attributes = lp.output.slice(0,lp.output.size-1) :+ AttributeReference(tableName, AnyTypeObj)()
+            new SchemaRDD(rdd.sqlContext, LogicalRDD(attributes, l.rdd)(this))
           case _ => rdd
-      }
-    } else rdd
+        }
+      } else rdd
 
     catalog.registerTable(Seq(tableName), new_rdd.queryExecution.logical)
   }
@@ -465,6 +469,40 @@ class SQLContext(@transient val sparkContext: SparkContext)
       } else {
         val scan = scanBuilder((projectSet ++ filterSet).toSeq)
         Project(projectList, filterCondition.map(Filter(_, scan)).getOrElse(scan))
+      }
+    }
+
+    def pruneFilterProjectNav(
+                            projectList: Seq[NamedExpression],
+                            filterPredicates: Seq[Expression],
+                            navigationList: Seq[NamedExpression],
+                            prunePushedDownFilters: Seq[Expression] => Seq[Expression],
+                            scanBuilder: (Seq[Attribute],Seq[Expression]) => SparkPlan): SparkPlan = {
+
+      val navigationAttributes = AttributeSet(navigationList.map(_.toAttribute))
+      val projectSet = AttributeSet(projectList.flatMap(_.references)) -- navigationAttributes
+
+      val navigationSet = AttributeSet(navigationList.flatMap(_.references))
+
+      val filterSet = AttributeSet(filterPredicates.flatMap(_.references)) -- navigationAttributes
+      val filterCondition = prunePushedDownFilters(filterPredicates).reduceLeftOption(And)
+
+      val filter = filterPredicates.flatMap{
+        e => if (containsKnownData(e.children, navigationAttributes)) Seq(e) else Seq()
+      }
+
+
+
+      val scan = scanBuilder((projectSet ++ filterSet ++ navigationSet).toSeq, filter)
+      val nav = Navigate(navigationList,scan)
+      Project(projectList, filterCondition.map(Filter(_, nav)).getOrElse(nav))
+    }
+    private def containsKnownData(exps: Seq[Expression], navigationAttributes: AttributeSet): Boolean ={
+      exps.foldLeft(true){
+        case (false,_) => false
+        case (_, e:Attribute) if navigationAttributes.contains(e) => false
+        case (_, e:Expression) => containsKnownData(e.children,navigationAttributes)
+        case _ => true
       }
     }
   }

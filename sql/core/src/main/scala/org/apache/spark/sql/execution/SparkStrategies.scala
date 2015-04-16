@@ -213,7 +213,7 @@ private[sql] abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
         InsertIntoParquetTable(relation, planLater(child), overwrite = false) :: Nil
       case logical.InsertIntoTable(table: ParquetRelation, partition, child, overwrite) =>
         InsertIntoParquetTable(table, planLater(child), overwrite) :: Nil
-      case PhysicalOperation(projectList, filters: Seq[Expression], relation: ParquetRelation) =>
+      case PhysicalOperation(projectList, filters: Seq[Expression], nav, relation: ParquetRelation) =>
         val prunePushedDownFilters =
           if (sqlContext.conf.parquetFilterPushDown) {
             (predicates: Seq[Expression]) => {
@@ -245,12 +245,22 @@ private[sql] abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
 
   object InMemoryScans extends Strategy {
     def apply(plan: LogicalPlan): Seq[SparkPlan] = plan match {
-      case PhysicalOperation(projectList, filters, mem: InMemoryRelation) =>
-        pruneFilterProject(
-          projectList,
-          filters,
-          identity[Seq[Expression]], // All filters still need to be evaluated.
-          InMemoryColumnarTableScan(_,  filters, mem)) :: Nil
+      case PhysicalOperation(projectList, filters, navigations, mem: InMemoryRelation) =>
+        if (navigations.isEmpty) {
+          pruneFilterProject(
+            projectList,
+            filters,
+            identity[Seq[Expression]], // All filters still need to be evaluated.
+            InMemoryColumnarTableScan(_,  filters, mem)) :: Nil
+        }else {
+          pruneFilterProjectNav(
+            projectList,
+            filters,
+            navigations,
+            identity[Seq[Expression]], // All filters still need to be evaluated.
+            InMemoryColumnarTableScan(_,  _, mem)) :: Nil
+        }
+
       case _ => Nil
     }
   }

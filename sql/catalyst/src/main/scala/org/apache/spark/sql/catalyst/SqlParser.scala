@@ -55,6 +55,7 @@ class SqlParser extends AbstractSparkSQLParser {
   protected val DESC = Keyword("DESC")
   protected val DISTINCT = Keyword("DISTINCT")
   protected val DOUBLE = Keyword("DOUBLE")
+  protected val DATE = Keyword("DATE")
   protected val ELSE = Keyword("ELSE")
   protected val END = Keyword("END")
   protected val EXCEPT = Keyword("EXCEPT")
@@ -379,6 +380,7 @@ class SqlParser extends AbstractSparkSQLParser {
     ( STRING ^^^ StringType
     | TIMESTAMP ^^^ TimestampType
     | DOUBLE ^^^ DoubleType
+    |  DATE ^^^ DateType
     | fixedDecimalType
     | DECIMAL ^^^ DecimalType.Unlimited
     )
