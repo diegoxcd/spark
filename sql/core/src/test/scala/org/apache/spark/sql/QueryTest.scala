@@ -57,7 +57,6 @@ class QueryTest extends PlanTest {
       val converted: Seq[Row] = answer.map { s =>
         Row.fromSeq(s.toSeq.map {
           case d: java.math.BigDecimal => BigDecimal(d)
-          case t: Map[String,_] => new GenericTupleValue(t)
           case o => o
         })
       }
@@ -74,9 +73,8 @@ class QueryTest extends PlanTest {
             |${org.apache.spark.sql.catalyst.util.stackTraceToString(e)}
           """.stripMargin)
     }
-    val exp = prepareAnswer(expectedAnswer)
-    val spk = prepareAnswer(sparkAnswer)
-    if (exp != spk) {
+
+    if (prepareAnswer(expectedAnswer) != prepareAnswer(sparkAnswer)) {
       fail(s"""
         |Results do not match for query:
         |${rdd.logicalPlan}

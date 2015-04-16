@@ -83,11 +83,11 @@ abstract class LogicalPlan extends QueryPlan[LogicalPlan] with Logging {
    */
   def sameResult(plan: LogicalPlan): Boolean = {
     plan.getClass == this.getClass &&
-      plan.children.size == children.size && {
+    plan.children.size == children.size && {
       logDebug(s"[${cleanArgs.mkString(", ")}] == [${plan.cleanArgs.mkString(", ")}]")
       cleanArgs == plan.cleanArgs
     } &&
-      (plan.children, children).zipped.forall(_ sameResult _)
+    (plan.children, children).zipped.forall(_ sameResult _)
   }
 
   /** Args that have cleaned such that differences in expression id should not affect equality */

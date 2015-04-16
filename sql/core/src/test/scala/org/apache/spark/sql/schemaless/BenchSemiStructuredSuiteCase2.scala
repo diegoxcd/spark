@@ -15,10 +15,11 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql
+package org.apache.spark.sql.schemaless
 
 import java.util.TimeZone
 
+import org.apache.spark.sql.{QueryTest, Row, SQLConf}
 import org.scalatest.BeforeAndAfterAll
 
 /* Implicits */
@@ -49,7 +50,7 @@ class BenchSemiStructuredSuiteCase2 extends QueryTest with BeforeAndAfterAll {
     setConf(SQLConf.IN_MEMORY_PARTITION_PRUNING, originalInMemoryPartitionPruning.toString)
   }
 
-  /*test("CSV-reviews1-non-cached3"){
+  test("CSV-reviews1-non-cached3"){
     //cacheTable("GoogleReviews")
     checkAnswer(
       sql("select t.textTime, CAST(t.textTime as STRING), count(*) " +
@@ -63,7 +64,7 @@ class BenchSemiStructuredSuiteCase2 extends QueryTest with BeforeAndAfterAll {
         Row("Mandy Brown",5000.0,"101447826328260261560",1362578479L))
     )
   }
-*//*
+
   test("CSV-reviews1-non-cached"){
     //cacheTable("GoogleReviews")
     checkAnswer(
@@ -139,7 +140,7 @@ class BenchSemiStructuredSuiteCase2 extends QueryTest with BeforeAndAfterAll {
     )
   }
 
-*/
+
   test("CSV-openreviews1-caching"){
     cacheTable("OGoogleReviews")
     checkAnswer(
@@ -164,7 +165,7 @@ class BenchSemiStructuredSuiteCase2 extends QueryTest with BeforeAndAfterAll {
     )
     uncacheTable("OGoogleReviews")
   }
-/*
+
   test("CSV-schemaless1-non-cached"){
 
     checkAnswer(
@@ -195,6 +196,6 @@ class BenchSemiStructuredSuiteCase2 extends QueryTest with BeforeAndAfterAll {
 
 
 
-*/
+
 
 }

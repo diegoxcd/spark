@@ -60,5 +60,4 @@ object SQLPlusPlusTypes {
         if (value.changePrecision(precision, scale)) value else null
     }
   }
-  var count =0
 }

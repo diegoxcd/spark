@@ -544,12 +544,8 @@ class SQLContext(@transient val sparkContext: SparkContext)
     // only used for execution.
     lazy val executedPlan: SparkPlan = prepareForExecution(sparkPlan)
 
-    /** Internal version of the RDD. Avoids copies and  ShuffledHashJoin [CAST(value#1, DoubleType)], [CAST(b#7, DoubleType)], BuildRight
-  Project [value#1]
-   PhysicalRDD [key#0,value#1], MapPartitionsRDD[1] at mapPartitions at ExistingRDD.scala:35
-  Project [b#7]
-   PhysicalRDD [a#6,b#7], MapPartitionsRDD[10] at mapPartitions at ExistingRDD.scala:35
-has no schema */
+    /** Internal version of the RDD. Avoids copies and has no schema */
+
     lazy val toRdd: RDD[Row] = executedPlan.execute()
 
     protected def stringOrError[A](f: => A): String =

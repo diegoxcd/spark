@@ -59,10 +59,6 @@ object TestData {
       TestData2(3, 2) :: Nil, 2).toSchemaRDD
   testData2.registerTempTable("testData2")
 
-  val negativeData2 = TestSQLContext.sparkContext.parallelize(
-    (1 to 100).map(i => TestData2(i, (-i)))).toSchemaRDD
-  negativeData2.registerTempTable("negativeData2")
-
 
   case class DecimalData(a: BigDecimal, b: BigDecimal)
 
@@ -137,13 +133,11 @@ object TestData {
     TestSQLContext.sparkContext.parallelize(List.fill(2)(StringData("test")))
   repeatedData.registerTempTable("repeatedData")
 
-  case class twoData(s: String, i:Int)
+
   val nullableRepeatedData =
     TestSQLContext.sparkContext.parallelize(
-      List.fill(2)(twoData(null,2)) ++
-      List.fill(2)(twoData("test",2))++
-        List.fill(4)(twoData(null,3)) ++
-        List.fill(4)(twoData("test",3)),2)
+      List.fill(2)(StringData(null)) ++
+        List.fill(2)(StringData("test")))
   nullableRepeatedData.registerTempTable("nullableRepeatedData")
 
   case class NullInts(a: Integer)
@@ -211,100 +205,5 @@ object TestData {
         :: ComplexData(Map(2 -> "2"), TestData(2, "2"), Seq(2), false)
         :: Nil).toSchemaRDD
   complexData.registerTempTable("complexData")
-
-  val rdd = TestSQLContext.sparkContext.parallelize(Row(1,Seq("a",2,3),3.4) :: Row(3,Seq(1,2,3),1,2) :: Nil)
-  //val schema = StructType(
-  //      StructField ("a",IntegerType, true) ::
-  //      StructField ("b",ArrayType(IntegerType), true) ::
-  //      StructField ("c",DoubleType, true) :: Nil
-  //)
-  val rowRDD = TestSQLContext.sparkContext.parallelize(
-    Row(Map("a" -> 1,"b" -> Map("bb" -> 3),"c" -> 3.4)) :: Row(Map("a" -> 3,"b" -> Seq(1,2),"c" -> 1, "d" -> 2)) :: Nil)
-
-  val mix = TestSQLContext.applySchema(rowRDD,AnyTypeObj)
-
-  mix.registerTempTable("myrows")
-
-  val rowRDD1 = TestSQLContext.sparkContext.parallelize(
-    Row(1,1) :: Row(1,3.5) :: Nil)
-
-  val mix1 = TestSQLContext.applySchema(rowRDD1,StructType(Seq(StructField("a",IntegerType),StructField("b",DoubleType))))
-
-  mix1.registerTempTable("rows")
-
-  val rowRDD2 = TestSQLContext.sparkContext.parallelize(
-    //Row(2,3) :: Row(3,4) :: Nil)
-    Row(Map("a" -> 2,"b" -> 3,"c" -> true)) :: Row(Map("a" -> 3.0,"b" -> 7.0, "c"-> false)) :: Nil)
-
-  val mix2 = TestSQLContext.applySchema(rowRDD2,AnyTypeObj)//StructType(StructField("a",IntegerType)::StructField("b",IntegerType)::Nil))
-
-  mix2.registerTempTable("IntsAsFloats")
-
-  val testD =
-    TestSQLContext.sparkContext.parallelize(
-      TestData2(1, 1) ::
-        TestData2(1, 2) ::
-        TestData2(2, 5) ::
-        TestData(2, "3.2") ::
-        TestData(3, "1") ::
-        TestData(3, "2") :: Nil, 2)
-  testD.registerTempTable("testData77")
-
-  case class TestData8(a : Int, b: Float)
-  val testD8 =
-    TestSQLContext.sparkContext.parallelize(
-      TestData2(1, 1) ::
-        TestData2(2, 5) ::
-        TestData2(1, 2) ::
-        TestData2(2, 5) ::
-        TestData8(2, 3.0.toFloat) ::
-        TestData8(3, 3.41.toFloat) ::
-        TestData8(3, 3.2.toFloat) :: Nil, 2)
-  testD8.registerTempTable("testDataIntFloat")
-
-  case class TestDataString(a: Int, b: String)
-
-  val testH =
-    TestSQLContext.sparkContext.parallelize(
-      TestData2(1, 1) ::
-        TestData2(2, 5) ::
-        TestData2(1, 2) ::
-        TestData2(2, 5) ::
-        TestData8(2, 3.0.toFloat) ::
-        TestData8(3, 3.41.toFloat) ::
-        TestData8(3, 3.2.toFloat) ::
-        TestDataString(1,"a" ) ::
-        TestDataString(4,"x") ::
-        TestDataString(1,"a") ::
-        TestDataString(2, "b") ::
-        Nil, 2)
-  testH.registerTempTable("testHeterogeneousData")
-
-  val rowSchemaless = TestSQLContext.sparkContext.parallelize(
-    (1 to 100).map(i => Row(Map ("key" -> i,"value" -> i.toString ))))
-  val testDataSchemaless = TestSQLContext.applySchema(rowSchemaless,AnyTypeObj)
-  testDataSchemaless.registerTempTable("testDataSchemaless")
-
-
-
-
-
-  val openRDD = TestSQLContext.sparkContext.parallelize((
-    Row(1, 2.3, List(1), List(3,4), Map("a" -> 3.0,"b" -> 7.0, "c"-> "option")) :: Nil) ++
-    (1 to 100).map(i => Row(1,i.toDouble,i.toString,List(i),null)) ++
-    Seq(Row(2, 3.0, "a"    , List(2,3), Map("x" -> 2,"y" -> 3,"z" -> true))) ++
-    (1 to 100).map(i => Row(2,i.toDouble,"xx",List(2,i),Map("a"->(i+1), "y" -> (i*2).toDouble))),
-    2)
-
-  val sType = OpenStructType(
-    StructField("number",IntegerType) ::
-    StructField("float",DoubleType) ::
-    StructField("any", AnyTypeObj) ::
-    StructField("array", ArrayType(IntegerType))::Nil)
-
-  val openSchemaRDD = TestSQLContext.applySchema(openRDD,sType)
-
-  openSchemaRDD.registerTempTable("openTable")
-
 
 }

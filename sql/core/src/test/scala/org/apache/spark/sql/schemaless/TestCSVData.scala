@@ -15,14 +15,14 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql
+package org.apache.spark.sql.schemaless
 
-import java.sql.{Date, Timestamp}
+import java.sql.Date
 import java.text.SimpleDateFormat
 
-import org.apache.spark.sql.test.TestSQLContext
+import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.expressions.GenericTupleValue
-import org.apache.spark.sql.test.TestSQLContext._
+import org.apache.spark.sql.test.TestSQLContext
 import org.apache.spark.sql.types._
 
 object TestCSVData {

@@ -452,9 +452,9 @@ class SQLQuerySuite extends QueryTest with BeforeAndAfterAll {
     sql("SELECT DISTINCT n FROM lowerCaseData ORDER BY n DESC")
       .limit(2)
       .registerTempTable("subset1")
-    sql("SELECT DISTINCT n FROM lowerCaseData")
-      .limit(2)
-      .registerTempTable("subset2")
+    //sql("SELECT DISTINCT n FROM lowerCaseData")
+    //  .limit(2)
+     // .registerTempTable("subset2")
     checkAnswer(
       sql("SELECT * FROM lowerCaseData INNER JOIN subset1 ON subset1.n = lowerCaseData.n"),
       Row(3, "c", 3) ::
@@ -1034,6 +1034,4 @@ class SQLQuerySuite extends QueryTest with BeforeAndAfterAll {
     rdd.registerTempTable("distinctData")
     checkAnswer(sql("SELECT COUNT(DISTINCT key,value) FROM distinctData"), Row(2))
   }
-
-
 }
