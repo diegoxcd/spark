@@ -21,7 +21,6 @@ import java.sql.Timestamp
 
 import org.apache.spark.sql.catalyst.plans.logical
 import org.apache.spark.sql.test._
-import org.apache.spark.sql.types._
 
 /* Implicits */
 import org.apache.spark.sql.test.TestSQLContext._
@@ -58,7 +57,6 @@ object TestData {
       TestData2(3, 1) ::
       TestData2(3, 2) :: Nil, 2).toSchemaRDD
   testData2.registerTempTable("testData2")
-
 
   case class DecimalData(a: BigDecimal, b: BigDecimal)
 
@@ -133,11 +131,10 @@ object TestData {
     TestSQLContext.sparkContext.parallelize(List.fill(2)(StringData("test")))
   repeatedData.registerTempTable("repeatedData")
 
-
   val nullableRepeatedData =
     TestSQLContext.sparkContext.parallelize(
       List.fill(2)(StringData(null)) ++
-        List.fill(2)(StringData("test")))
+      List.fill(2)(StringData("test")))
   nullableRepeatedData.registerTempTable("nullableRepeatedData")
 
   case class NullInts(a: Integer)

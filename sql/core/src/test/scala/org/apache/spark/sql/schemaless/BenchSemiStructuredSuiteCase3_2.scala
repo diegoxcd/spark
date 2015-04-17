@@ -15,11 +15,11 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql
+package org.apache.spark.sql.schemaless
 
 import java.util.TimeZone
 
-import org.apache.spark.sql.schemaless.TestCSVData
+import org.apache.spark.sql.{QueryTest, Row, SQLConf}
 import org.scalatest.BeforeAndAfterAll
 
 /* Implicits */
