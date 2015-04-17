@@ -14,7 +14,7 @@ object SQLPlusPlusTypes {
   def typeOrder(t1: DataType): Int = typePrecedence.indexOf(t1)
   def coerceAnyNumeric(evalE:Any, t1:DataType): (Any,DataType) ={
     t1 match {
-      case t: AnyType => evalE match {
+      case t: AnyTypeClass => evalE match {
         case exp: String =>
           try {
             (exp.toDouble, DoubleType)
@@ -29,7 +29,7 @@ object SQLPlusPlusTypes {
   }
   def coerceAny(evalE:Any, t1:DataType): (Any,DataType) = {
     t1 match {
-      case t: AnyType => (evalE,ScalaReflection.typeOfObject(evalE))
+      case t: AnyTypeClass => (evalE,ScalaReflection.typeOfObject(evalE))
       case t => (evalE, t)
     }
   }

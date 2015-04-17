@@ -131,8 +131,8 @@ class SQLContext(@transient val sparkContext: SparkContext)
     val attributeSeq = ScalaReflection.attributesFor[A]
     val rowRDD =
       attributeSeq(0) match {
-      case AttributeReference("*", _: AnyType,_,_) =>
-        RDDConversions.productToRowRdd(rdd, AnyTypeObj)
+      case AttributeReference("*", _: AnyTypeClass,_,_) =>
+        RDDConversions.productToRowRdd(rdd, AnyType)
       case _      =>
         val schema = StructType.fromAttributes(attributeSeq)
         RDDConversions.productToRowRdd(rdd, schema)
@@ -189,14 +189,14 @@ class SQLContext(@transient val sparkContext: SparkContext)
         LogicalRDD(o.toAttributes, rRDD)(self)
       case s:StructType =>
         LogicalRDD(s.toAttributes, rowRDD)(self)
-      case _:AnyType    =>
+      case _:AnyTypeClass    =>
         val attributes =
           if (rowRDD.first().size ==1 ) {
             rowRDD.first().get(0) match {
               case r : Map[String,_] =>
-                rRDD = RDDConversions.mapRowToRDD(rowRDD,AnyTypeObj)
-                Seq(AttributeReference("*", AnyTypeObj)())
-              case r : TupleValue =>  Seq(AttributeReference("*", AnyTypeObj)())
+                rRDD = RDDConversions.mapRowToRDD(rowRDD,AnyType)
+                Seq(AttributeReference("*", AnyType)())
+              case r : TupleValue =>  Seq(AttributeReference("*", AnyType)())
               case _ => Nil
           }
         } else Nil
@@ -332,8 +332,8 @@ class SQLContext(@transient val sparkContext: SparkContext)
     val new_rdd =
       if (lp.output.size >= 1 ) {
         (lp.output(lp.output.size-1), lp) match {
-          case (r@AttributeReference("*",AnyTypeObj,_,_), l : LogicalRDD)  =>
-            val attributes = lp.output.slice(0,lp.output.size-1) :+ AttributeReference(tableName, AnyTypeObj)()
+          case (r@AttributeReference("*",AnyType,_,_), l : LogicalRDD)  =>
+            val attributes = lp.output.slice(0,lp.output.size-1) :+ AttributeReference(tableName, AnyType)()
             new SchemaRDD(rdd.sqlContext, LogicalRDD(attributes, l.rdd)(this))
           case _ => rdd
         }

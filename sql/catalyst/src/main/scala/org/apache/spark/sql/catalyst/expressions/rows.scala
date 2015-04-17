@@ -196,10 +196,10 @@ class RowOrdering(ordering: Seq[SortOrder]) extends Ordering[Row] {
         val (ord:Ordering[Any], l, r)  = order.dataType match {
           case n: NativeType =>
             (n.ordering.asInstanceOf[Ordering[Any]],left, right)
-          case n: AnyType    =>
+          case n: AnyTypeClass    =>
             val (nEvalE1, nt1) = SQLPlusPlusTypes.coerceAny(left,n)
             val (nEvalE2, nt2) = SQLPlusPlusTypes.coerceAny(right,n)
-            val t = HiveTypeCoercion.findTightestCommonType(nt1,nt2).getOrElse(AnyTypeObj)
+            val t = HiveTypeCoercion.findTightestCommonType(nt1,nt2).getOrElse(AnyType)
             (t,nt1,nt2) match {
               case (n:NumericType,nt1:NumericType,nt2:NumericType) =>
                 (n.ordering.asInstanceOf[Ordering[Any]],
@@ -207,7 +207,7 @@ class RowOrdering(ordering: Seq[SortOrder]) extends Ordering[Row] {
                   SQLPlusPlusTypes.convertToType(nEvalE2,nt2,n).asInstanceOf[n.JvmType])
               case (n:NativeType,nt1:NativeType,nt2:NativeType) if nt1 == nt2 =>
                 (n.ordering.asInstanceOf[Ordering[Any]],left, right)
-              case (n:AnyType, nt1,nt2) =>
+              case (n:AnyTypeClass, nt1,nt2) =>
                 (IntegerType.ordering,SQLPlusPlusTypes.typeOrder(nt1),SQLPlusPlusTypes.typeOrder(nt2))
             }
         }

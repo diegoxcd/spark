@@ -74,7 +74,7 @@ abstract class BinaryArithmetic extends BinaryExpression {
       throw new UnresolvedException(this,
         s"datatype. Can not resolve due to differing types ${left.dataType}, ${right.dataType}")
     }
-    HiveTypeCoercion.findTightestCommonType(left.dataType,right.dataType).getOrElse(AnyTypeObj)
+    HiveTypeCoercion.findTightestCommonType(left.dataType,right.dataType).getOrElse(AnyType)
   }
 
   override def eval(input: Row): Any = {

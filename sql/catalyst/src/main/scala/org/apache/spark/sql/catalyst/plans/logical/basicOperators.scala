@@ -80,7 +80,7 @@ case class Union(left: LogicalPlan, right: LogicalPlan) extends BinaryNode {
         } else {
           l match {
             case a:AttributeReference =>
-              val t= HiveTypeCoercion.findTightestCommonType(l.dataType,r.dataType).getOrElse(AnyTypeObj)
+              val t= HiveTypeCoercion.findTightestCommonType(l.dataType,r.dataType).getOrElse(AnyType)
               a.copy(dataType = t)(exprId = l.exprId, qualifiers = l.qualifiers)
             case b => b
           }
@@ -294,7 +294,7 @@ case class Intersect(left: LogicalPlan, right: LogicalPlan) extends BinaryNode {
       } else {
         l match {
           case a:AttributeReference =>
-            val t= HiveTypeCoercion.findTightestCommonType(l.dataType,r.dataType).getOrElse(AnyTypeObj)
+            val t= HiveTypeCoercion.findTightestCommonType(l.dataType,r.dataType).getOrElse(AnyType)
             a.copy(dataType = t)(exprId = l.exprId, qualifiers = l.qualifiers)
           case b => b
         }

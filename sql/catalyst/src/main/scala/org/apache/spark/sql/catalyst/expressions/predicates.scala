@@ -19,7 +19,7 @@ package org.apache.spark.sql.catalyst.expressions
 
 import org.apache.spark.sql.catalyst.analysis.{HiveTypeCoercion, UnresolvedException}
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
-import org.apache.spark.sql.types.{ AnyTypeObj, BooleanType}
+import org.apache.spark.sql.types.{ AnyType, BooleanType}
 
 object InterpretedPredicate {
   def apply(expression: Expression, inputSchema: Seq[Attribute]): (Row => Boolean) =
@@ -229,7 +229,7 @@ case class If(predicate: Expression, trueValue: Expression, falseValue: Expressi
         this,
         s"Can not resolve due to differing types ${trueValue.dataType}, ${falseValue.dataType}")
     }
-    HiveTypeCoercion.findTightestCommonType(trueValue.dataType, falseValue.dataType).getOrElse(AnyTypeObj)
+    HiveTypeCoercion.findTightestCommonType(trueValue.dataType, falseValue.dataType).getOrElse(AnyType)
   }
 
   type EvaluatedType = Any
@@ -273,7 +273,7 @@ case class CaseWhen(branches: Seq[Expression]) extends Expression {
       case Seq(elseVal) => elseVal.dataType
     }.toSeq
     val commonType = valueTypes.reduce { (v1, v2) =>
-      HiveTypeCoercion.findTightestCommonType(v1, v2).getOrElse(AnyTypeObj)}
+      HiveTypeCoercion.findTightestCommonType(v1, v2).getOrElse(AnyType)}
     commonType
   }
 

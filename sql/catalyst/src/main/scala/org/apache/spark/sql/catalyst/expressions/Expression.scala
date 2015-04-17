@@ -117,7 +117,7 @@ abstract class Expression extends TreeNode[Expression] {
           case (t1 , t2) =>
             val (nEvalE1, nt1) = SQLPlusPlusTypes.coerceAnyNumeric(evalE1,t1)
             val (nEvalE2, nt2) = SQLPlusPlusTypes.coerceAnyNumeric(evalE2,t2)
-            val t =HiveTypeCoercion.findTightestCommonType(nt1,nt2).getOrElse(AnyTypeObj)
+            val t =HiveTypeCoercion.findTightestCommonType(nt1,nt2).getOrElse(AnyType)
             (t,nt1,nt2) match {
               case (n:NumericType,nt1:NumericType,nt2:NumericType) =>
                 f.asInstanceOf[(Numeric[n.JvmType], n.JvmType, n.JvmType) => n.JvmType] (
@@ -218,7 +218,7 @@ abstract class Expression extends TreeNode[Expression] {
           case (t1 , t2) =>
             val (nEvalE1, nt1) = SQLPlusPlusTypes.coerceAnyNumeric(evalE1,t1)
             val (nEvalE2, nt2) = SQLPlusPlusTypes.coerceAnyNumeric(evalE2,t2)
-            val t =HiveTypeCoercion.findTightestCommonType(nt1,nt2).getOrElse(AnyTypeObj)
+            val t =HiveTypeCoercion.findTightestCommonType(nt1,nt2).getOrElse(AnyType)
             (t,nt1,nt2) match {
               case (n:NumericType,nt1:NumericType,nt2:NumericType) =>
                 f.asInstanceOf[(Numeric[n.JvmType], n.JvmType, n.JvmType) => n.JvmType] (
@@ -288,7 +288,7 @@ abstract class Expression extends TreeNode[Expression] {
           case (t1 , t2) =>
             val (nEvalE1, nt1) = SQLPlusPlusTypes.coerceAny(evalE1,t1)
             val (nEvalE2, nt2) = SQLPlusPlusTypes.coerceAny(evalE2,t2)
-            val t = HiveTypeCoercion.findTightestCommonType(nt1,nt2).getOrElse(AnyTypeObj)
+            val t = HiveTypeCoercion.findTightestCommonType(nt1,nt2).getOrElse(AnyType)
             (t,nt1,nt2) match {
               case (n:NumericType,nt1:NumericType,nt2:NumericType) =>
                 f.asInstanceOf[(Numeric[n.JvmType], n.JvmType, n.JvmType) => n.JvmType] (
@@ -297,7 +297,7 @@ abstract class Expression extends TreeNode[Expression] {
               case (n:NativeType,nt1:NativeType,nt2:NativeType) if nt1 == nt2 =>
                 f.asInstanceOf[(Ordering[n.JvmType], n.JvmType, n.JvmType) => n.JvmType] (
                   n.ordering, nEvalE1.asInstanceOf[n.JvmType], nEvalE2.asInstanceOf[n.JvmType] )
-              case (n:AnyType, nt1,nt2) =>
+              case (n:AnyTypeClass, nt1,nt2) =>
                 f.asInstanceOf[(Ordering[IntegerType.JvmType], IntegerType.JvmType,
                   IntegerType.JvmType) => IntegerType.JvmType] (IntegerType.numeric,
                   SQLPlusPlusTypes.typeOrder(nt1), SQLPlusPlusTypes.typeOrder(nt2))

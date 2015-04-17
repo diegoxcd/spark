@@ -306,7 +306,7 @@ case object StringType extends NativeType with PrimitiveType {
   override def defaultSize: Int = 4096
 }
 
-object AnyTypeObj extends AnyType {
+object AnyType extends AnyTypeClass {
 
 }
 
@@ -318,13 +318,13 @@ object AnyTypeObj extends AnyType {
  * @group dataType
  */
 @DeveloperApi
-case class AnyType() extends DataType {
+case class AnyTypeClass() extends DataType {
   private[sql] type JvmType = Any
   @transient private[sql] lazy val tag = ScalaReflectionLock.synchronized { typeTag[JvmType] }
 
   override def equals(that: Any) = {
     that match {
-      case t :AnyType => true
+      case t :AnyTypeClass => true
       case _ => false
     }
   }
@@ -784,12 +784,12 @@ case object OpenStructType {
     StructType(attributes.map(a => StructField(a.name, a.dataType, a.nullable, a.metadata)))
 
   def apply(fields: Seq[StructField]): StructType = {
-    val nFields = fields :+ StructField("*",AnyTypeObj)
+    val nFields = fields :+ StructField("*",AnyType)
     StructType(nFields.toArray)
   }
 
   def apply(fields: java.util.List[StructField]): StructType = {
-    fields.add(StructField("*",AnyTypeObj))
+    fields.add(StructField("*",AnyType))
     StructType(fields.toArray.asInstanceOf[Array[StructField]])
   }
 

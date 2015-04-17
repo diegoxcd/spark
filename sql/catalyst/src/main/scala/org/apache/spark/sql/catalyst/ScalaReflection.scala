@@ -67,14 +67,14 @@ trait ScalaReflection {
         }.toArray)
     case (d: BigDecimal, _) => Decimal(d)
     case (d: java.math.BigDecimal, _) => Decimal(d)
-    case (s: Seq[_], t: AnyType) => s.map(convertToCatalyst(_, t))
-    case (p: Product, _: AnyType) =>
+    case (s: Seq[_], t: AnyTypeClass) => s.map(convertToCatalyst(_, t))
+    case (p: Product, _: AnyTypeClass) =>
       new GenericTupleValue(
         p.getClass.getDeclaredFields.map(field => field.getName),
         p.productIterator.map { elem =>
-          convertToCatalyst(elem, AnyTypeObj)
+          convertToCatalyst(elem, AnyType)
         }.toSeq)
-    case (m: Map[String,_], t: AnyType) => val mp:Map[String,Any] = m.map { case (k, v) =>
+    case (m: Map[String,_], t: AnyTypeClass) => val mp:Map[String,Any] = m.map { case (k, v) =>
       k -> convertToCatalyst(v, t)
       }
       new GenericTupleValue(mp.toMap)
@@ -105,8 +105,8 @@ trait ScalaReflection {
   def attributesFor[T: TypeTag]: Seq[Attribute] = schemaFor[T] match {
     case Schema(s: StructType, _) =>
       s.fields.map(f => AttributeReference(f.name, f.dataType, f.nullable, f.metadata)())
-    case Schema(s: AnyType, _) =>
-      Seq(AttributeReference("*", AnyTypeObj)())
+    case Schema(s: AnyTypeClass, _) =>
+      Seq(AttributeReference("*", AnyType)())
   }
 
   /** Returns a catalyst DataType and its nullability for the given Scala Type using reflection. */
@@ -152,7 +152,7 @@ trait ScalaReflection {
                   schemaFor(sf)
                 StructField(p.name.toString, dataType, nullable)
               }), nullable = true)
-          case _ => Schema(AnyTypeObj,nullable = true)
+          case _ => Schema(AnyType,nullable = true)
         }
 
 

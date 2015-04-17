@@ -260,11 +260,11 @@ trait HiveTypeCoercion {
 
       case p: BinaryPredicate if p.left.dataType == StringType
                                 && p.right.dataType != StringType
-                                && p.right.dataType != AnyTypeObj =>
+                                && p.right.dataType != AnyType =>
         p.makeCopy(Array(Cast(p.left, DoubleType), p.right))
       case p: BinaryPredicate if p.left.dataType != StringType
                                 && p.right.dataType == StringType
-                                && p.left.dataType != AnyTypeObj =>
+                                && p.left.dataType != AnyType =>
         p.makeCopy(Array(p.left, Cast(p.right, DoubleType)))
 
       case i @ In(a, b) if a.dataType == DateType && b.forall(_.dataType == StringType) =>
@@ -293,9 +293,9 @@ trait HiveTypeCoercion {
       // Skip nodes who's children have not been resolved yet.
       case e if !e.childrenResolved => e
 
-      case a: BinaryArithmetic if a.left.dataType == AnyTypeObj =>
+      case a: BinaryArithmetic if a.left.dataType == AnyType =>
         a.makeCopy(Array(Cast(a.left, DoubleType), a.right))
-      case a: BinaryArithmetic if a.right.dataType == AnyTypeObj =>
+      case a: BinaryArithmetic if a.right.dataType == AnyType =>
         a.makeCopy(Array(a.left, Cast(a.right, DoubleType)))
 
 
@@ -569,12 +569,12 @@ trait HiveTypeCoercion {
         if (valueTypes.distinct.size > 1) {
           val commonType = valueTypes.reduce { (v1, v2) =>
             findTightestCommonType(v1, v2)
-              .getOrElse(AnyTypeObj)
+              .getOrElse(AnyType)
           }
           val transformedBranches = branches.sliding(2, 2).map {
-            case Seq(cond, value) if value.dataType != commonType  && commonType != AnyTypeObj=>
+            case Seq(cond, value) if value.dataType != commonType  && commonType != AnyType=>
               Seq(cond, Cast(value, commonType))
-            case Seq(elseVal) if elseVal.dataType != commonType && commonType != AnyTypeObj=>
+            case Seq(elseVal) if elseVal.dataType != commonType && commonType != AnyType=>
               Seq(Cast(elseVal, commonType))
             case s => s
           }.reduce(_ ++ _)

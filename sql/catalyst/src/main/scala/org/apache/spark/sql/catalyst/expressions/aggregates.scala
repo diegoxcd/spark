@@ -335,7 +335,7 @@ case class Sum(child: Expression) extends PartialAggregate with trees.UnaryNode[
       DecimalType(precision + 10, scale)  // Add 10 digits left of decimal point, like Hive
     case DecimalType.Unlimited =>
       DecimalType.Unlimited
-    case AnyTypeObj =>
+    case AnyType =>
       DecimalType.Unlimited
     case _ =>
       child.dataType
@@ -419,9 +419,9 @@ case class CombineSetsAndSumFunction(
       null
     } else {
       base.dataType match {
-        case AnyTypeObj => Cast(Literal(
+        case AnyType => Cast(Literal(
           casted.iterator.map(f => f.apply(0)).reduceLeft(
-            (a,b) => Add(Literal(a,AnyTypeObj), Literal(b,AnyTypeObj)).eval(null))),
+            (a,b) => Add(Literal(a,AnyType), Literal(b,AnyType)).eval(null))),
           DecimalType.Unlimited).eval(null)
         case _ => Cast(Literal(
           casted.iterator.map(f => f.apply(0)).reduceLeft(
@@ -471,7 +471,7 @@ case class AverageFunction(expr: Expression, base: AggregateExpression)
     expr.dataType match {
       case DecimalType.Fixed(_, _) =>
         DecimalType.Unlimited
-      case AnyTypeObj =>
+      case AnyType =>
         DecimalType.Unlimited
       case _ =>
         expr.dataType
@@ -568,7 +568,7 @@ case class SumFunction(expr: Expression, base: AggregateExpression) extends Aggr
     expr.dataType match {
       case DecimalType.Fixed(_, _) =>
         DecimalType.Unlimited
-      case AnyTypeObj =>
+      case AnyType =>
         DecimalType.Unlimited
       case _ =>
         expr.dataType
@@ -612,8 +612,8 @@ case class SumDistinctFunction(expr: Expression, base: AggregateExpression)
       null
     } else {
       base.dataType match {
-        case AnyTypeObj => Cast(Literal(seen.reduceLeft(
-            (a,b) => Add(Literal(a,AnyTypeObj), Literal(b,AnyTypeObj)).eval(null))),
+        case AnyType => Cast(Literal(seen.reduceLeft(
+            (a,b) => Add(Literal(a,AnyType), Literal(b,AnyType)).eval(null))),
           DecimalType.Unlimited).eval(null)
         case _ => Cast(Literal(
           seen.reduceLeft(

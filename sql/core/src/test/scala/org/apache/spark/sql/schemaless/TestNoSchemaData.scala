@@ -50,7 +50,7 @@ object TestNoSchemaData {
   val rowRDD = TestSQLContext.sparkContext.parallelize(
     Row(Map("a" -> 1,"b" -> Map("bb" -> 3),"c" -> 3.4)) :: Row(Map("a" -> 3,"b" -> Seq(1,2),"c" -> 1, "d" -> 2)) :: Nil)
 
-  val mix = TestSQLContext.applySchema(rowRDD,AnyTypeObj)
+  val mix = TestSQLContext.applySchema(rowRDD,AnyType)
 
   mix.registerTempTable("myrows")
 
@@ -65,7 +65,7 @@ object TestNoSchemaData {
     //Row(2,3) :: Row(3,4) :: Nil)
     Row(Map("a" -> 2,"b" -> 3,"c" -> true)) :: Row(Map("a" -> 3.0,"b" -> 7.0, "c"-> false)) :: Nil)
 
-  val mix2 = TestSQLContext.applySchema(rowRDD2,AnyTypeObj)//StructType(StructField("a",IntegerType)::StructField("b",IntegerType)::Nil))
+  val mix2 = TestSQLContext.applySchema(rowRDD2,AnyType)//StructType(StructField("a",IntegerType)::StructField("b",IntegerType)::Nil))
 
   mix2.registerTempTable("IntsAsFloats")
 
@@ -111,7 +111,7 @@ object TestNoSchemaData {
 
   val rowSchemaless = TestSQLContext.sparkContext.parallelize(
     (1 to 100).map(i => Row(Map ("key" -> i,"value" -> i.toString ))))
-  val testDataSchemaless = TestSQLContext.applySchema(rowSchemaless,AnyTypeObj)
+  val testDataSchemaless = TestSQLContext.applySchema(rowSchemaless,AnyType)
   testDataSchemaless.registerTempTable("testDataSchemaless")
 
 
@@ -128,7 +128,7 @@ object TestNoSchemaData {
   val sType = OpenStructType(
     StructField("number",IntegerType) ::
     StructField("float",DoubleType) ::
-    StructField("any", AnyTypeObj) ::
+    StructField("any", AnyType) ::
     StructField("array", ArrayType(IntegerType))::Nil)
 
   val openSchemaRDD = TestSQLContext.applySchema(openRDD,sType)

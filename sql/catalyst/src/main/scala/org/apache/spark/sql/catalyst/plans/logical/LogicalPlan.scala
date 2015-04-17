@@ -23,7 +23,7 @@ import org.apache.spark.sql.catalyst.errors.TreeNodeException
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.plans.QueryPlan
 import org.apache.spark.sql.catalyst.trees.TreeNode
-import org.apache.spark.sql.types.{ AnyType, StructType}
+import org.apache.spark.sql.types.{ AnyTypeClass, StructType}
 import org.apache.spark.sql.catalyst.trees
 
 /**
@@ -122,7 +122,7 @@ abstract class LogicalPlan extends QueryPlan[LogicalPlan] with Logging {
           val remainingParts = parts.drop(1)
 
           // in case it is a AnyType, we check if the relation exists
-          if (option.dataType.isInstanceOf[AnyType] && option.qualifiers.find(resolver(_, option.name)).nonEmpty) {
+          if (option.dataType.isInstanceOf[AnyTypeClass] && option.qualifiers.find(resolver(_, option.name)).nonEmpty) {
             val path =  remainingParts.mkString(".")
             val resolved = getResolvedPaths(path, parts.head, resolver, child)
             resolved match {
@@ -163,7 +163,7 @@ abstract class LogicalPlan extends QueryPlan[LogicalPlan] with Logging {
     child.output.flatMap { option =>
       // If the first part of the desired name matches a qualifier for this possible match, drop it.
       if (option.qualifiers.find(resolver(_, head)).nonEmpty) {
-        if (option.dataType.isInstanceOf[AnyType] && resolver(option.name, path)) {
+        if (option.dataType.isInstanceOf[AnyTypeClass] && resolver(option.name, path)) {
           //already solved
           path :: Nil
         } else {
@@ -213,10 +213,10 @@ abstract class LogicalPlan extends QueryPlan[LogicalPlan] with Logging {
           parts
         }
 
-      if (!option.dataType.isInstanceOf[AnyType] && resolver(option.name, remainingParts.head)) {
+      if (!option.dataType.isInstanceOf[AnyTypeClass] && resolver(option.name, remainingParts.head)) {
         // Preserve the case of the user's attribute reference
         (option.withName(remainingParts.head), remainingParts.tail.toList) :: Nil
-      } else if (option.dataType.isInstanceOf[AnyType] && resolver(option.name,remainingParts.mkString("."))) {
+      } else if (option.dataType.isInstanceOf[AnyTypeClass] && resolver(option.name,remainingParts.mkString("."))) {
         //in case it is an attribute with type Any, and matches all the path
         (option.withName(option.name), Nil) :: Nil
       } else {

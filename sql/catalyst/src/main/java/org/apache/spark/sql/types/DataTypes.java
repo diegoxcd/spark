@@ -31,7 +31,7 @@ public class DataTypes {
   /**
    * Gets the AnyType object.
    */
-  public static final DataType AnyTypeObj = AnyTypeObj$.MODULE$;
+  public static final DataType AnyTypeObj = AnyType$.MODULE$;
 
   /**
    * Gets the BinaryType object.

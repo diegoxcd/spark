@@ -24,7 +24,7 @@ import org.apache.spark.sql.catalyst.ScalaReflection
 import org.apache.spark.sql.catalyst.analysis.MultiInstanceRelation
 import org.apache.spark.sql.catalyst.expressions.{Attribute, GenericMutableRow}
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Statistics}
-import org.apache.spark.sql.types.{AnyTypeObj, AnyType, StructType}
+import org.apache.spark.sql.types.{AnyType, AnyTypeClass, StructType}
 
 /**
  * :: DeveloperApi ::
@@ -52,7 +52,7 @@ object RDDConversions {
       }
     }
   }
-  def productToRowRdd[A <: Product](data: RDD[A], schema: AnyType): RDD[Row] = {
+  def productToRowRdd[A <: Product](data: RDD[A], schema: AnyTypeClass): RDD[Row] = {
     data.mapPartitions { iterator =>
       if (iterator.isEmpty) {
         Iterator.empty
@@ -60,14 +60,14 @@ object RDDConversions {
         val bufferedIterator = iterator.buffered
         val mutableRow = new GenericMutableRow(1)
         bufferedIterator.map { r =>
-          mutableRow(0) = ScalaReflection.convertToCatalyst(r,AnyTypeObj)
+          mutableRow(0) = ScalaReflection.convertToCatalyst(r,AnyType)
 
           mutableRow
         }
       }
     }
   }
-  def mapRowToRDD(data: RDD[Row], schema: AnyType): RDD[Row] = {
+  def mapRowToRDD(data: RDD[Row], schema: AnyTypeClass): RDD[Row] = {
     data.mapPartitions { iterator =>
       if (iterator.isEmpty) {
         Iterator.empty
@@ -75,7 +75,7 @@ object RDDConversions {
         val bufferedIterator = iterator.buffered
         val mutableRow = new GenericMutableRow(1)
         bufferedIterator.map { r =>
-          mutableRow(0) = ScalaReflection.convertToCatalyst(r(0),AnyTypeObj)
+          mutableRow(0) = ScalaReflection.convertToCatalyst(r(0),AnyType)
 
           mutableRow
         }

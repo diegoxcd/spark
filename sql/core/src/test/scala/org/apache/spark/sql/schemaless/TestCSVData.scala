@@ -168,7 +168,7 @@ object TestCSVData {
     }
   }
 
-  val noSchemaReviews =  TestSQLContext.applySchema(noSchemaReviewsRdd,AnyTypeObj)
+  val noSchemaReviews =  TestSQLContext.applySchema(noSchemaReviewsRdd,AnyType)
 
   noSchemaReviews.registerTempTable("schemalessGoogleReviews")
 
@@ -186,10 +186,10 @@ object TestCSVData {
 
   val schemaUsers = StructType(StructField("userName",StringType)::
     StructField("userId",StringType)::
-    StructField("currentPlace",ArrayType(AnyTypeObj))::
-    StructField("education",ArrayType(AnyTypeObj))::
-    StructField("jobs",ArrayType(AnyTypeObj))::
-    StructField("previousPlaces",ArrayType(AnyTypeObj))::Nil)
+    StructField("currentPlace",ArrayType(AnyType))::
+    StructField("education",ArrayType(AnyType))::
+    StructField("jobs",ArrayType(AnyType))::
+    StructField("previousPlaces",ArrayType(AnyType))::Nil)
 
   val users =  TestSQLContext.applySchema(usersRdd,schemaUsers)
 
